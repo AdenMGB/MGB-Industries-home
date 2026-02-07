@@ -19,7 +19,8 @@ coverage
 __tests__
 *.spec.ts
 *.spec.tsx
-tsconfig.*.json
+tsconfig.vitest.json
+tsconfig.node.json
 vitest.config.ts
 eslint.config.ts
 .prettierrc.json
