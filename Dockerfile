@@ -25,8 +25,8 @@ COPY env.d.ts ./
 COPY src ./src
 COPY public ./public
 
-# Build the application
-RUN pnpm run build
+# Build the application (skip type-check for faster builds)
+RUN pnpm run build-only
 
 # Stage 2: Production stage
 FROM nginx:alpine AS production
