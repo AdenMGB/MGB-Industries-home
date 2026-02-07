@@ -17,7 +17,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --no-frozen-lockfile
 
 # Copy source files and configs
-COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY tsconfig*.json ./
 COPY vite.config.ts ./
 COPY tailwind.config.js postcss.config.js ./
 COPY index.html ./
