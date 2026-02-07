@@ -13,7 +13,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+# --no-frozen-lockfile allows pnpm to update the lockfile if it's out of sync
+RUN pnpm install --no-frozen-lockfile
 
 # Copy source files and configs
 COPY tsconfig.json tsconfig.app.json ./
