@@ -1,6 +1,6 @@
 # aden-website
 
-This template should help get you started developing with Vue 3 in Vite.
+Portfolio website for AdenMGB built with Vue 3, Vite, and Tailwind CSS.
 
 ## Recommended IDE Setup
 
@@ -51,4 +51,75 @@ pnpm test:unit
 
 ```sh
 pnpm lint
+```
+
+## Docker
+
+### Using Docker Compose
+
+The easiest way to run the application with Docker:
+
+```sh
+# Set your GitHub repository (optional, defaults to adenmgb/aden-website)
+export GITHUB_REPOSITORY=your-username/aden-website
+
+# Start the container
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the container
+docker-compose down
+```
+
+The application will be available at `http://localhost:8080`.
+
+### Manual Docker Run
+
+```sh
+# Pull the image
+docker pull ghcr.io/your-username/aden-website:latest
+
+# Run the container
+docker run -d \
+  --name aden-website \
+  -p 8080:80 \
+  --restart unless-stopped \
+  ghcr.io/your-username/aden-website:latest
+```
+
+### Building Locally
+
+```sh
+# Build the Docker image
+docker build -t aden-website:latest .
+
+# Run the container
+docker run -d \
+  --name aden-website \
+  -p 8080:80 \
+  aden-website:latest
+```
+
+## Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  web:
+    image: ghcr.io/${GITHUB_REPOSITORY:-adenmgb/aden-website}:latest
+    container_name: aden-website
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 ```
