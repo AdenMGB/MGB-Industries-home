@@ -99,31 +99,52 @@ export const api = {
     return request<{ users: UserWithoutPassword[] }>('/users')
   },
 
-  async getUser(id: number) {
+  async getUser(id: string) {
     return request<{ user: UserWithoutPassword }>(`/users/${id}`)
   },
 
-  async updateUser(id: number, data: { email?: string; name?: string; role?: 'user' | 'admin' }) {
+  async updateUser(id: string, data: { email?: string; name?: string; role?: 'user' | 'admin' }) {
     return request<{ user: UserWithoutPassword }>(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     })
   },
 
-  async resetUserPassword(id: number) {
+  async resetUserPassword(id: string) {
     return request<{ message: string; temporaryPassword: string }>(`/users/${id}/reset-password`, {
       method: 'POST',
     })
   },
 
-  async generateResetLink(id: number) {
+  async generateResetLink(id: string) {
     return request<{ message: string; resetLink: string; token: string; expiresAt: string }>(`/users/${id}/reset-link`, {
       method: 'POST',
     })
   },
 
-  async deleteUser(id: number) {
+  async deleteUser(id: string) {
     return request<{ message: string }>(`/users/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
+  async getGameSaves() {
+    return request<{ saves: Record<string, any> }>('/game-saves')
+  },
+
+  async getGameSave(gameId: string) {
+    return request<{ saveData: any }>(`/game-saves/${gameId}`)
+  },
+
+  async saveGame(gameId: string, saveData: Record<string, any>) {
+    return request<{ message: string }>('/game-saves', {
+      method: 'POST',
+      body: JSON.stringify({ gameId, saveData }),
+    })
+  },
+
+  async deleteGameSave(gameId: string) {
+    return request<{ message: string }>(`/game-saves/${gameId}`, {
       method: 'DELETE',
     })
   },

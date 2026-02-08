@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 
 export interface User {
-  id: number
+  id: string
   email: string
   name: string
   role: 'user' | 'admin'
@@ -12,7 +12,7 @@ export interface User {
 export interface UserWithoutPassword extends Omit<User, 'password_hash'> {}
 
 export interface JWTPayload {
-  userId: number
+  userId: string
   email: string
   role: 'user' | 'admin'
 }

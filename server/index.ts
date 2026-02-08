@@ -4,6 +4,7 @@ import { databasePlugin } from './plugins/database.js'
 import { authPlugin } from './plugins/auth.js'
 import { authRoutes } from './routes/auth.js'
 import { userRoutes } from './routes/users.js'
+import { gameSaveRoutes } from './routes/gameSaves.js'
 
 export async function createServer() {
   const fastify = Fastify({
@@ -25,6 +26,7 @@ export async function createServer() {
   // Register routes (they will check for database availability themselves)
   await fastify.register(authRoutes)
   await fastify.register(userRoutes)
+  await fastify.register(gameSaveRoutes)
 
   return fastify
 }

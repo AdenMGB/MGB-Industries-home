@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import { randomUUID } from 'node:crypto'
 import { hashPassword, verifyPassword } from '../utils/password.js'
 import type { UserWithoutPassword } from '../types/index.js'
 import { getDatabase } from '../plugins/database.js'
@@ -43,7 +44,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Check if user already exists
       const existingUser = db
         .prepare('SELECT id FROM users WHERE email = ?')
-        .get(body.email) as { id: number } | undefined
+        .get(body.email) as { id: string } | undefined
 
       if (existingUser) {
         return reply.code(400).send({ error: 'Email already registered' })
@@ -60,12 +61,12 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Hash password
       const passwordHash = await hashPassword(body.password)
 
-      // Insert user
-      const result = db
-        .prepare('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)')
-        .run(body.email, passwordHash, body.name, role)
+      // Generate UUID for user
+      const userId = randomUUID()
 
-      const userId = Number(result.lastInsertRowid)
+      // Insert user
+      db.prepare('INSERT INTO users (id, email, password_hash, name, role) VALUES (?, ?, ?, ?, ?)')
+        .run(userId, body.email, passwordHash, body.name, role)
 
       // Generate JWT
       const token = await signJWT({
@@ -103,7 +104,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       const user = db
         .prepare('SELECT * FROM users WHERE email = ?')
         .get(body.email) as {
-        id: number
+        id: string
         email: string
         password_hash: string
         name: string
@@ -212,7 +213,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           WHERE prt.token = ? AND prt.used = 0
         `)
         .get(token) as {
-        user_id: number
+        user_id: string
         token: string
         expires_at: string
         used: number
@@ -255,7 +256,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           WHERE prt.token = ? AND prt.used = 0
         `)
         .get(body.token) as {
-        user_id: number
+        user_id: string
         token: string
         expires_at: string
         used: number
@@ -311,7 +312,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       if (body.email) {
         const emailExists = db
           .prepare('SELECT id FROM users WHERE email = ? AND id != ?')
-          .get(body.email, payload.userId) as { id: number } | undefined
+          .get(body.email, payload.userId) as { id: string } | undefined
 
         if (emailExists) {
           return reply.code(400).send({ error: 'Email already registered' })

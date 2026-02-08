@@ -59,7 +59,7 @@ export async function userRoutes(fastify: FastifyInstance) {
       // Check if user exists
       const existingUser = db
         .prepare('SELECT id, email FROM users WHERE id = ?')
-        .get(id) as { id: number; email: string } | undefined
+        .get(id) as { id: string; email: string } | undefined
 
       if (!existingUser) {
         return reply.code(404).send({ error: 'User not found' })
@@ -69,7 +69,7 @@ export async function userRoutes(fastify: FastifyInstance) {
       if (body.email && body.email !== existingUser.email) {
         const emailExists = db
           .prepare('SELECT id FROM users WHERE email = ? AND id != ?')
-          .get(body.email, id) as { id: number } | undefined
+          .get(body.email, id) as { id: string } | undefined
 
         if (emailExists) {
           return reply.code(400).send({ error: 'Email already registered' })
@@ -126,7 +126,7 @@ export async function userRoutes(fastify: FastifyInstance) {
       // Check if user exists
       const existingUser = db
         .prepare('SELECT id FROM users WHERE id = ?')
-        .get(id) as { id: number } | undefined
+        .get(id) as { id: string } | undefined
 
       if (!existingUser) {
         return reply.code(404).send({ error: 'User not found' })
@@ -158,7 +158,7 @@ export async function userRoutes(fastify: FastifyInstance) {
       // Check if user exists
       const existingUser = db
         .prepare('SELECT id, email FROM users WHERE id = ?')
-        .get(id) as { id: number; email: string } | undefined
+        .get(id) as { id: string; email: string } | undefined
 
       if (!existingUser) {
         return reply.code(404).send({ error: 'User not found' })
@@ -195,17 +195,17 @@ export async function userRoutes(fastify: FastifyInstance) {
   fastify.delete('/api/users/:id', { preHandler: [requireAdmin] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string }
-      const { user: currentUser } = request as { user: { userId: number } }
+      const { user: currentUser } = request as { user: { userId: string } }
 
       // Prevent self-deletion
-      if (Number(id) === currentUser.userId) {
+      if (id === currentUser.userId) {
         return reply.code(400).send({ error: 'Cannot delete your own account' })
       }
 
       // Check if user exists
       const existingUser = db
         .prepare('SELECT id FROM users WHERE id = ?')
-        .get(id) as { id: number } | undefined
+        .get(id) as { id: string } | undefined
 
       if (!existingUser) {
         return reply.code(404).send({ error: 'User not found' })
