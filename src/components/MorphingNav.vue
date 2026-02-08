@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
+import {
+  Bars3Icon,
+  XMarkIcon,
+  ChevronDownIcon,
+  ArrowRightOnRectangleIcon,
+  ShieldCheckIcon,
+} from '@heroicons/vue/24/outline'
 import { HomeIcon, FolderIcon, UserIcon, EnvelopeIcon, CubeIcon } from '@heroicons/vue/24/solid'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
 const router = useRouter()
+const { user, isAuthenticated, isAdmin, logout, checkAuth } = useAuth()
 
 const isOpen = ref(false)
+const isAccountDropdownOpen = ref(false)
 const navRef = ref<HTMLElement>()
 const backdropRef = ref<HTMLElement>()
+const accountDropdownRef = ref<HTMLElement>()
 
 const navItems = [
   { name: 'Home', path: '/', icon: HomeIcon },
@@ -101,27 +111,63 @@ const navigate = (path: string) => {
   }, 100)
 }
 
+const handleLogout = () => {
+  logout()
+  isAccountDropdownOpen.value = false
+  router.push('/')
+}
+
+// Close dropdown when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+  if (
+    accountDropdownRef.value &&
+    !accountDropdownRef.value.contains(event.target as Node)
+  ) {
+    isAccountDropdownOpen.value = false
+  }
+}
+
 const isActive = (path: string) => route.path === path
 
-// Animate nav items on mount
-onMounted(() => {
-  const desktopNavItems = document.querySelectorAll('.desktop-nav-item')
-  gsap.fromTo(
-    desktopNavItems,
-    {
-      opacity: 0,
-      y: -10,
-      scale: 0.95,
-    },
-    {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      duration: 0.4,
-      stagger: 0.05,
-      ease: premiumEase,
-    },
-  )
+// Animate nav items on mount and when auth state changes
+const animateNavItems = () => {
+  setTimeout(() => {
+    const desktopNavItems = document.querySelectorAll('.desktop-nav-item')
+    gsap.fromTo(
+      desktopNavItems,
+      {
+        opacity: 0,
+        y: -10,
+        scale: 0.95,
+      },
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.4,
+        stagger: 0.05,
+        ease: premiumEase,
+      },
+    )
+  }, 100)
+}
+
+watch(
+  () => isAuthenticated.value,
+  () => {
+    animateNavItems()
+  },
+  { immediate: true },
+)
+
+onMounted(async () => {
+  await checkAuth()
+  document.addEventListener('click', handleClickOutside)
+  animateNavItems()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -162,6 +208,129 @@ onMounted(() => {
             {{ item.name }}
           </span>
         </router-link>
+
+        <!-- Auth Section -->
+        <div v-if="!isAuthenticated" class="flex items-center gap-2 ml-2">
+          <router-link
+            to="/login"
+            :class="cn(
+              'px-4 py-2 rounded-lg text-sm font-normal',
+              'transition-all duration-300 transform-gpu',
+              'hover:scale-105 active:scale-95',
+              'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+            )"
+          >
+            Sign In
+          </router-link>
+          <router-link
+            to="/signup"
+            :class="cn(
+              'px-4 py-2 rounded-lg text-sm font-normal',
+              'bg-peach/30 text-gray-800',
+              'hover:bg-peach/40 transition-all duration-300',
+              'transform-gpu hover:scale-105 active:scale-95',
+            )"
+          >
+            Sign Up
+          </router-link>
+        </div>
+
+        <!-- Account Dropdown -->
+        <div
+          v-else
+          ref="accountDropdownRef"
+          class="relative ml-2"
+        >
+          <button
+            @click.stop="isAccountDropdownOpen = !isAccountDropdownOpen"
+            :class="cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal',
+              'transition-all duration-300 transform-gpu',
+              'hover:scale-105 active:scale-95',
+              'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+              isAccountDropdownOpen && 'bg-white/40',
+            )"
+          >
+            <UserIcon class="w-4 h-4" />
+            <span class="max-w-[100px] truncate">{{ user?.name }}</span>
+            <ChevronDownIcon
+              class="w-4 h-4 transition-transform duration-300"
+              :class="{ 'rotate-180': isAccountDropdownOpen }"
+            />
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div
+            v-if="isAccountDropdownOpen"
+            :class="cn(
+              'absolute right-0 mt-2 w-56 rounded-xl',
+              'bg-white/95 backdrop-blur-md border border-gray-200/50',
+              'shadow-lg overflow-hidden',
+            )"
+          >
+            <div class="p-2 space-y-1">
+              <!-- User Info -->
+              <div class="px-3 py-2 border-b border-gray-200/50">
+                <p class="text-sm font-medium text-gray-800 truncate">{{ user?.name }}</p>
+                <p class="text-xs text-gray-500 truncate">{{ user?.email }}</p>
+                <span
+                  v-if="isAdmin"
+                  :class="cn(
+                    'inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-md',
+                    'bg-peach/30 text-gray-800',
+                  )"
+                >
+                  Admin
+                </span>
+              </div>
+
+              <!-- Account Link -->
+              <router-link
+                to="/account"
+                @click="isAccountDropdownOpen = false"
+                :class="cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
+                  'text-gray-700 hover:bg-peach/20',
+                  'transition-all duration-300',
+                  'hover:scale-[1.02]',
+                )"
+              >
+                <UserIcon class="w-4 h-4" />
+                <span>Account</span>
+              </router-link>
+
+              <!-- Admin Dashboard Link -->
+              <router-link
+                v-if="isAdmin"
+                to="/admin"
+                @click="isAccountDropdownOpen = false"
+                :class="cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
+                  'text-gray-700 hover:bg-lavender/20',
+                  'transition-all duration-300',
+                  'hover:scale-[1.02]',
+                )"
+              >
+                <component :is="ShieldCheckIcon" class="w-4 h-4" />
+                <span>Admin Dashboard</span>
+              </router-link>
+
+              <!-- Logout -->
+              <button
+                @click="handleLogout"
+                :class="cn(
+                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
+                  'text-red-700 hover:bg-red-50',
+                  'transition-all duration-300',
+                  'hover:scale-[1.02]',
+                )"
+              >
+                <ArrowRightOnRectangleIcon class="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Mobile Menu Button -->
@@ -209,6 +378,87 @@ onMounted(() => {
           <component :is="item.icon" class="w-5 h-5 transition-transform duration-300" />
           <span>{{ item.name }}</span>
         </router-link>
+
+        <!-- Mobile Auth Section -->
+        <div v-if="!isAuthenticated" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50">
+          <router-link
+            to="/login"
+            @click="navigate('/login')"
+            :class="cn(
+              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+              'transition-all duration-300 transform-gpu',
+              'hover:scale-105 active:scale-95',
+              'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+            )"
+          >
+            <UserIcon class="w-5 h-5" />
+            <span>Sign In</span>
+          </router-link>
+          <router-link
+            to="/signup"
+            @click="navigate('/signup')"
+            :class="cn(
+              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+              'bg-peach/30 text-gray-800',
+              'hover:bg-peach/40 transition-all duration-300',
+              'transform-gpu hover:scale-105 active:scale-95',
+            )"
+          >
+            <UserIcon class="w-5 h-5" />
+            <span>Sign Up</span>
+          </router-link>
+        </div>
+
+        <!-- Mobile Account Section -->
+        <div v-else class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50">
+          <div class="px-4 py-2 mb-2">
+            <p class="text-sm font-medium text-gray-800">{{ user?.name }}</p>
+            <p class="text-xs text-gray-500">{{ user?.email }}</p>
+          </div>
+          <router-link
+            to="/account"
+            @click="navigate('/account')"
+            :class="cn(
+              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+              'transition-all duration-300 transform-gpu',
+              'hover:scale-105 active:scale-95',
+              isActive('/account')
+                ? 'bg-peach/20 text-gray-800 scale-105'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+            )"
+          >
+            <UserIcon class="w-5 h-5" />
+            <span>Account</span>
+          </router-link>
+          <router-link
+            v-if="isAdmin"
+            to="/admin"
+            @click="navigate('/admin')"
+            :class="cn(
+              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+              'transition-all duration-300 transform-gpu',
+              'hover:scale-105 active:scale-95',
+              isActive('/admin')
+                ? 'bg-lavender/20 text-gray-800 scale-105'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+            )"
+          >
+            <ShieldCheckIcon class="w-5 h-5" />
+            <span>Admin Dashboard</span>
+          </router-link>
+          <button
+            @click="handleLogout"
+            :class="cn(
+              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+              'text-red-700 hover:bg-red-50',
+              'transition-all duration-300 transform-gpu',
+              'hover:scale-105 active:scale-95',
+            )"
+          >
+            <ArrowRightOnRectangleIcon class="w-5 h-5" />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
     </div>
   </nav>
