@@ -15,8 +15,12 @@ async function request<T>(
   const token = localStorage.getItem('auth_token')
 
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     ...options.headers,
+  }
+
+  // Only set Content-Type for requests with a body
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (token) {
@@ -77,11 +81,50 @@ export const api = {
     return request<{ user: UserWithoutPassword }>('/auth/me')
   },
 
+  async updateOwnAccount(data: { email?: string; name?: string }) {
+    return request<{ user: UserWithoutPassword }>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return request<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+  },
+
   async getUsers() {
     return request<{ users: UserWithoutPassword[] }>('/users')
   },
 
   async getUser(id: number) {
     return request<{ user: UserWithoutPassword }>(`/users/${id}`)
+  },
+
+  async updateUser(id: number, data: { email?: string; name?: string; role?: 'user' | 'admin' }) {
+    return request<{ user: UserWithoutPassword }>(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async resetUserPassword(id: number) {
+    return request<{ message: string; temporaryPassword: string }>(`/users/${id}/reset-password`, {
+      method: 'POST',
+    })
+  },
+
+  async generateResetLink(id: number) {
+    return request<{ message: string; resetLink: string; token: string; expiresAt: string }>(`/users/${id}/reset-link`, {
+      method: 'POST',
+    })
+  },
+
+  async deleteUser(id: number) {
+    return request<{ message: string }>(`/users/${id}`, {
+      method: 'DELETE',
+    })
   },
 }

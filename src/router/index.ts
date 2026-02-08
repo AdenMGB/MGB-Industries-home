@@ -63,6 +63,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/AdminDashboard.vue'),
     meta: { transition: 'slide-up', requiresAuth: true, requiresAdmin: true },
   },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('@/pages/ResetPasswordPage.vue'),
+    meta: { transition: 'slide-up', public: true },
+  },
 ]
 
 const router = createRouter({
