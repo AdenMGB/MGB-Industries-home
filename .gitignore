@@ -37,3 +37,8 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Database
+data/
+*.db
+*.db-journal

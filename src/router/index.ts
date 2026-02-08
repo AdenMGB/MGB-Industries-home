@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -38,6 +39,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/GamePage.vue'),
     meta: { transition: 'zoom' },
   },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/pages/LoginPage.vue'),
+    meta: { transition: 'slide-up', public: true },
+  },
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: () => import('@/pages/SignupPage.vue'),
+    meta: { transition: 'slide-up', public: true },
+  },
+  {
+    path: '/account',
+    name: 'Account',
+    component: () => import('@/pages/AccountDashboard.vue'),
+    meta: { transition: 'slide-up', requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('@/pages/AdminDashboard.vue'),
+    meta: { transition: 'slide-up', requiresAuth: true, requiresAdmin: true },
+  },
 ]
 
 const router = createRouter({
@@ -50,6 +75,39 @@ const router = createRouter({
       return { top: 0 }
     }
   },
+})
+
+router.beforeEach(async (to, from, next) => {
+  const { checkAuth, isAuthenticated, isAdmin } = useAuth()
+
+  // Check authentication status
+  await checkAuth()
+
+  // Public routes (login, signup) - redirect to account if already logged in
+  if (to.meta.public) {
+    if (isAuthenticated.value) {
+      next({ name: 'Account' })
+    } else {
+      next()
+    }
+    return
+  }
+
+  // Protected routes
+  if (to.meta.requiresAuth) {
+    if (!isAuthenticated.value) {
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+
+    // Admin-only routes
+    if (to.meta.requiresAdmin && !isAdmin.value) {
+      next({ name: 'Account' })
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

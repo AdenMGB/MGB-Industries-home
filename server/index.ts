@@ -1,0 +1,52 @@
+import Fastify from 'fastify'
+import cors from '@fastify/cors'
+import { databasePlugin } from './plugins/database.js'
+import { authPlugin } from './plugins/auth.js'
+import { authRoutes } from './routes/auth.js'
+import { userRoutes } from './routes/users.js'
+
+export async function createServer() {
+  const fastify = Fastify({
+    logger: {
+      level: process.env.LOG_LEVEL || 'info',
+    },
+  })
+
+  // Register CORS
+  await fastify.register(cors, {
+    origin: true,
+    credentials: true,
+  })
+
+  // Register plugins (database must be first)
+  await fastify.register(databasePlugin)
+  await fastify.register(authPlugin)
+
+  // Register routes (they will check for database availability themselves)
+  await fastify.register(authRoutes)
+  await fastify.register(userRoutes)
+
+  return fastify
+}
+
+export async function startServer() {
+  const server = await createServer()
+
+  const port = Number(process.env.PORT) || 3001
+  const host = process.env.HOST || '0.0.0.0'
+
+  try {
+    await server.listen({ port, host })
+    console.log(`Server listening on http://${host}:${port}`)
+  } catch (err) {
+    server.log.error(err)
+    process.exit(1)
+  }
+
+  return server
+}
+
+// If running directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startServer()
+}

@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { templateCompilerOptions } from '@tresjs/core'
+import { vitePluginServer } from './vite-plugin-server.js'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,6 +13,7 @@ export default defineConfig({
       ...templateCompilerOptions,
     }),
     vueDevTools(),
+    vitePluginServer(),
   ],
   resolve: {
     alias: {
@@ -20,5 +22,13 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['three', '@tresjs/core'],
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
 })

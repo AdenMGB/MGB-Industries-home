@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch, onMounted } from 'vue'
 import { useTheme } from './composables/useTheme'
+import { useAuth } from './composables/useAuth'
 import { cn } from './utils/cn'
 import MorphingNav from './components/MorphingNav.vue'
 import PageTransition from './components/PageTransition.vue'
@@ -8,6 +9,7 @@ import { RouterView } from 'vue-router'
 import { gsap } from 'gsap'
 
 const { themeMode } = useTheme()
+const { checkAuth } = useAuth()
 
 watch(() => themeMode.value, (mode) => {
   if (mode === 'hacker') {
@@ -17,7 +19,10 @@ watch(() => themeMode.value, (mode) => {
   }
 }, { immediate: true })
 
-onMounted(() => {
+onMounted(async () => {
+  // Check authentication status
+  await checkAuth()
+
   // Animate background elements with smooth motion
   const bgElements = document.querySelectorAll('.bg-element')
   bgElements.forEach((el, index) => {
