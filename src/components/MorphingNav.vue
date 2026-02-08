@@ -160,8 +160,11 @@ watch(
   { immediate: true },
 )
 
-onMounted(async () => {
-  await checkAuth()
+onMounted(() => {
+  // Check auth in background (non-blocking)
+  checkAuth().catch(() => {
+    // Silently handle errors
+  })
   document.addEventListener('click', handleClickOutside)
   animateNavItems()
 })

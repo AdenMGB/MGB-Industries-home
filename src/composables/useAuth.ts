@@ -45,6 +45,9 @@ export function useAuth() {
       return false
     }
 
+    // Set token immediately (optimistic) so UI can render
+    token.value = storedToken
+
     try {
       const response = await api.getMe()
       if (response.error || !response.data) {

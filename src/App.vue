@@ -19,9 +19,11 @@ watch(() => themeMode.value, (mode) => {
   }
 }, { immediate: true })
 
-onMounted(async () => {
-  // Check authentication status
-  await checkAuth()
+onMounted(() => {
+  // Check authentication status in background (non-blocking)
+  checkAuth().catch(() => {
+    // Silently handle errors - UI will show as not authenticated
+  })
 
   // Animate background elements with smooth motion
   const bgElements = document.querySelectorAll('.bg-element')

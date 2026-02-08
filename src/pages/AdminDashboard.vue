@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { api } from '@/api/client'
 import { cn } from '@/utils/cn'
@@ -59,6 +60,16 @@ const userStats = computed(() => {
 })
 
 onMounted(async () => {
+  // Check if user is admin (auth may still be loading)
+  const { checkAuth } = useAuth()
+  await checkAuth()
+  
+  // Redirect if not admin
+  if (!isAdmin.value) {
+    router.push('/account')
+    return
+  }
+  
   await loadUsers()
   await nextTick()
   

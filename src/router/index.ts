@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -83,36 +82,54 @@ const router = createRouter({
   },
 })
 
-router.beforeEach(async (to, from, next) => {
-  const { checkAuth, isAuthenticated, isAdmin } = useAuth()
+router.beforeEach((to, from, next) => {
+  // Check token synchronously (non-blocking)
+  const hasToken = !!localStorage.getItem('auth_token')
 
-  // Check authentication status
-  await checkAuth()
+  // Start auth check in background (completely non-blocking)
+  if (hasToken) {
+    // Defer to next tick to avoid blocking
+    Promise.resolve().then(() => {
+      import('@/composables/useAuth').then(({ useAuth }) => {
+        const { checkAuth } = useAuth()
+        checkAuth().catch(() => {
+          // Silently handle errors
+        })
+      })
+    })
+  }
 
-  // Public routes (login, signup) - redirect to account if already logged in
+  // Public routes - allow immediately
   if (to.meta.public) {
-    if (isAuthenticated.value) {
-      next({ name: 'Account' })
-    } else {
-      next()
+    next()
+    // Redirect if authenticated (non-blocking, after navigation)
+    if (hasToken) {
+      Promise.resolve().then(() => {
+        import('@/composables/useAuth').then(({ useAuth }) => {
+          const { isAuthenticated } = useAuth()
+          setTimeout(() => {
+            if (isAuthenticated.value && (to.name === 'Login' || to.name === 'Signup')) {
+              router.push({ name: 'Account' })
+            }
+          }, 100)
+        })
+      })
     }
     return
   }
 
-  // Protected routes
+  // Protected routes - check token only
   if (to.meta.requiresAuth) {
-    if (!isAuthenticated.value) {
+    if (!hasToken) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
       return
     }
-
-    // Admin-only routes
-    if (to.meta.requiresAdmin && !isAdmin.value) {
-      next({ name: 'Account' })
-      return
-    }
+    // Has token - allow navigation, component will verify
+    next()
+    return
   }
 
+  // No auth requirements
   next()
 })
 
