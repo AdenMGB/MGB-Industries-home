@@ -24,7 +24,8 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
 }
 
-const { user: currentUser } = useAuth()
+const router = useRouter()
+const { user: currentUser, isAdmin, checkAuth } = useAuth()
 const users = ref<UserWithoutPassword[]>([])
 const isLoading = ref(true)
 const error = ref('')
@@ -60,17 +61,18 @@ const userStats = computed(() => {
 })
 
 onMounted(async () => {
-  // Check if user is admin (auth may still be loading)
-  const { checkAuth } = useAuth()
+  // Start loading users immediately (non-blocking)
+  loadUsers()
+  
+  // Check auth in parallel
   await checkAuth()
   
-  // Redirect if not admin
+  // Redirect if not admin (after auth check completes)
   if (!isAdmin.value) {
     router.push('/account')
     return
   }
   
-  await loadUsers()
   await nextTick()
   
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
