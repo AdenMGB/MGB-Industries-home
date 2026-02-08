@@ -1,9 +1,10 @@
 import { ref, computed } from 'vue'
 import { api } from '../api/client'
 import type { UserWithoutPassword } from '../../server/types/index.js'
+import { getCookie, setCookie, removeCookie } from '@/utils/cookies'
 
 const user = ref<UserWithoutPassword | null>(null)
-const token = ref<string | null>(localStorage.getItem('auth_token'))
+const token = ref<string | null>(getCookie('auth_token'))
 
 export function useAuth() {
   const isAuthenticated = computed(() => !!user.value && !!token.value)
@@ -18,7 +19,7 @@ export function useAuth() {
 
     token.value = response.data.token
     user.value = response.data.user
-    localStorage.setItem('auth_token', response.data.token)
+    setCookie('auth_token', response.data.token)
 
     return response.data
   }
@@ -32,13 +33,13 @@ export function useAuth() {
 
     token.value = response.data.token
     user.value = response.data.user
-    localStorage.setItem('auth_token', response.data.token)
+    setCookie('auth_token', response.data.token)
 
     return response.data
   }
 
   async function checkAuth() {
-    const storedToken = localStorage.getItem('auth_token')
+    const storedToken = getCookie('auth_token')
     if (!storedToken) {
       user.value = null
       token.value = null
@@ -51,7 +52,7 @@ export function useAuth() {
     try {
       const response = await api.getMe()
       if (response.error || !response.data) {
-        localStorage.removeItem('auth_token')
+        removeCookie('auth_token')
         user.value = null
         token.value = null
         return false
@@ -61,7 +62,7 @@ export function useAuth() {
       token.value = storedToken
       return true
     } catch (error) {
-      localStorage.removeItem('auth_token')
+      removeCookie('auth_token')
       user.value = null
       token.value = null
       return false
@@ -69,7 +70,7 @@ export function useAuth() {
   }
 
   function logout() {
-    localStorage.removeItem('auth_token')
+    removeCookie('auth_token')
     user.value = null
     token.value = null
   }

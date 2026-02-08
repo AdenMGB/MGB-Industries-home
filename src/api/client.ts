@@ -1,4 +1,5 @@
 import type { UserWithoutPassword } from '../../server/types/index.js'
+import { getCookie, removeCookie } from '@/utils/cookies'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -8,14 +9,11 @@ export interface ApiResponse<T> {
   details?: any
 }
 
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('auth_token')
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  const token = getCookie('auth_token')
 
-  const headers: HeadersInit = {
-    ...options.headers,
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
   }
 
   // Only set Content-Type for requests with a body
@@ -38,7 +36,7 @@ async function request<T>(
     if (!response.ok) {
       // Handle 401 (unauthorized) - clear token and redirect to login
       if (response.status === 401) {
-        localStorage.removeItem('auth_token')
+        removeCookie('auth_token')
         window.location.href = '/login'
       }
 
@@ -58,23 +56,17 @@ async function request<T>(
 
 export const api = {
   async signup(email: string, password: string, name: string) {
-    return request<{ token: string; user: UserWithoutPassword }>(
-      '/auth/signup',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password, name }),
-      },
-    )
+    return request<{ token: string; user: UserWithoutPassword }>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    })
   },
 
   async login(email: string, password: string) {
-    return request<{ token: string; user: UserWithoutPassword }>(
-      '/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      },
-    )
+    return request<{ token: string; user: UserWithoutPassword }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
   },
 
   async getMe() {
@@ -117,9 +109,12 @@ export const api = {
   },
 
   async generateResetLink(id: string) {
-    return request<{ message: string; resetLink: string; token: string; expiresAt: string }>(`/users/${id}/reset-link`, {
-      method: 'POST',
-    })
+    return request<{ message: string; resetLink: string; token: string; expiresAt: string }>(
+      `/users/${id}/reset-link`,
+      {
+        method: 'POST',
+      },
+    )
   },
 
   async deleteUser(id: string) {
@@ -147,5 +142,16 @@ export const api = {
     return request<{ message: string }>(`/game-saves/${gameId}`, {
       method: 'DELETE',
     })
+  },
+
+  async recordGameVisit(gameId: string, gameName: string, gameHref: string) {
+    return request<{ message: string }>('/game-history/visit', {
+      method: 'POST',
+      body: JSON.stringify({ gameId, gameName, gameHref }),
+    })
+  },
+
+  async getGameHistory() {
+    return request<{ history: Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }> }>('/game-history')
   },
 }

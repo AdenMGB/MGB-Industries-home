@@ -42,8 +42,12 @@ export async function loadAndInjectSaveData(gameId: string, iframe: HTMLIFrameEl
           }
 
           if (iframeWindow && iframeWindow.localStorage) {
-            // Inject save data into localStorage
+            // Inject save data into localStorage (exclude auth_token)
             for (const [key, value] of Object.entries(saveData)) {
+              // Skip auth_token - it should never be synced as game save data
+              if (key === 'auth_token') {
+                continue
+              }
               try {
                 iframeWindow.localStorage.setItem(key, String(value))
               } catch (e) {
@@ -134,10 +138,11 @@ async function syncFromIframe(gameId: string, iframe: HTMLIFrameElement, force =
       if (iframeDoc && iframeDoc.defaultView) {
         const iframeLocalStorage = iframeDoc.defaultView.localStorage
         if (iframeLocalStorage) {
-          // Read all localStorage items
+          // Read all localStorage items (exclude auth_token)
           for (let i = 0; i < iframeLocalStorage.length; i++) {
             const key = iframeLocalStorage.key(i)
-            if (key) {
+            if (key && key !== 'auth_token') {
+              // Skip auth_token - it should never be synced as game save data
               saveData[key] = iframeLocalStorage.getItem(key)
             }
           }
@@ -152,22 +157,22 @@ async function syncFromIframe(gameId: string, iframe: HTMLIFrameElement, force =
     // Only save if there's data and enough time has passed
     const now = Date.now()
     if (Object.keys(saveData).length > 0 && (force || now - lastSaveTime > DEBOUNCE_DELAY)) {
-      await syncGameSaveToBackend(gameId, saveData)
+      await syncGameSaveToBackend(gameId, saveData, force)
     }
   } catch (error) {
     console.error('Failed to sync from iframe:', error)
   }
 }
 
-async function syncGameSaveToBackend(gameId: string, saveData: Record<string, any>) {
-  if (isSyncing) return
+async function syncGameSaveToBackend(gameId: string, saveData: Record<string, any>, force = false) {
+  if (isSyncing && !force) return
 
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated.value) return
 
-  // Only save if there's data and enough time has passed
+  // Only save if there's data and enough time has passed (or forced)
   const now = Date.now()
-  if (Object.keys(saveData).length > 0 && now - lastSaveTime > DEBOUNCE_DELAY) {
+  if (Object.keys(saveData).length > 0 && (force || now - lastSaveTime > DEBOUNCE_DELAY)) {
     try {
       isSyncing = true
       await api.saveGame(gameId, saveData)
@@ -178,4 +183,14 @@ async function syncGameSaveToBackend(gameId: string, saveData: Record<string, an
       isSyncing = false
     }
   }
+}
+
+/**
+ * Force an immediate save of the current game state
+ */
+export async function forceSaveGame(gameId: string, iframe: HTMLIFrameElement): Promise<void> {
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated.value) return
+
+  await syncFromIframe(gameId, iframe, true)
 }

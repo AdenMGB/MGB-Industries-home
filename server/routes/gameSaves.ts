@@ -8,6 +8,12 @@ const saveGameSchema = z.object({
   saveData: z.record(z.any()),
 })
 
+const recordGameVisitSchema = z.object({
+  gameId: z.string().min(1),
+  gameName: z.string().min(1),
+  gameHref: z.string().min(1),
+})
+
 export async function gameSaveRoutes(fastify: FastifyInstance) {
   const db = getDatabase()
 
@@ -102,6 +108,68 @@ export async function gameSaveRoutes(fastify: FastifyInstance) {
       db.prepare('DELETE FROM game_saves WHERE user_id = ? AND game_id = ?').run(user.userId, gameId)
 
       return reply.send({ message: 'Save deleted successfully' })
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Internal server error' })
+    }
+  })
+
+  // Record game visit
+  fastify.post('/api/game-history/visit', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const body = recordGameVisitSchema.parse(request.body)
+      const { user } = request as { user: { userId: string } }
+
+      // Insert visit record
+      db.prepare(`
+        INSERT INTO game_history (user_id, game_id, game_name, game_href, visited_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+      `).run(user.userId, body.gameId, body.gameName, body.gameHref)
+
+      // Keep only the last 5 visits per user (delete older ones)
+      const allVisits = db
+        .prepare('SELECT id FROM game_history WHERE user_id = ? ORDER BY visited_at DESC')
+        .all(user.userId) as Array<{ id: number }>
+
+      if (allVisits.length > 5) {
+        const idsToDelete = allVisits.slice(5).map(v => v.id)
+        if (idsToDelete.length > 0) {
+          const placeholders = idsToDelete.map(() => '?').join(',')
+          db.prepare(`DELETE FROM game_history WHERE id IN (${placeholders})`).run(...idsToDelete)
+        }
+      }
+
+      return reply.send({ message: 'Visit recorded successfully' })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.code(400).send({ error: 'Validation error', details: error.errors })
+      }
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Internal server error' })
+    }
+  })
+
+  // Get game history (last 5 games)
+  fastify.get('/api/game-history', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { user } = request as { user: { userId: string } }
+
+      const history = db
+        .prepare(`
+          SELECT game_id, game_name, game_href, visited_at
+          FROM game_history
+          WHERE user_id = ?
+          ORDER BY visited_at DESC
+          LIMIT 5
+        `)
+        .all(user.userId) as Array<{
+        game_id: string
+        game_name: string
+        game_href: string
+        visited_at: string
+      }>
+
+      return reply.send({ history })
     } catch (error) {
       fastify.log.error(error)
       return reply.code(500).send({ error: 'Internal server error' })

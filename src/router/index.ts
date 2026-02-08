@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { getCookie } from '@/utils/cookies'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -84,7 +85,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   // Check token synchronously (non-blocking)
-  const hasToken = !!localStorage.getItem('auth_token')
+  const hasToken = !!getCookie('auth_token')
 
   // Start auth check in background (completely non-blocking)
   if (hasToken) {

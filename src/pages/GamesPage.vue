@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { cn } from '@/utils/cn'
-import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
+import { useAuth } from '@/composables/useAuth'
+import { api } from '@/api/client'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
@@ -16,10 +18,106 @@ interface Game {
   section: string
   img: string
   type?: string
+  isOfflinePack?: boolean
 }
 
 const searchQuery = ref('')
 const selectedSection = ref<string | null>(null)
+const offlineGames = ref<Array<{ name: string; href: string }>>([])
+const gameHistory = ref<Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }>>([])
+const { isAuthenticated } = useAuth()
+
+// Generate abbreviation for game name
+const getGameAbbreviation = (name: string): string => {
+  const words = name.trim().split(/\s+/).filter(w => w.length > 0)
+  
+  if (words.length === 0) {
+    return name.charAt(0).toUpperCase()
+  }
+  
+  // If first word is short (4 chars or less), use it (including numbers)
+  const firstWord = words[0]
+  if (firstWord && firstWord.length <= 4) {
+    return firstWord.toUpperCase()
+  }
+  
+  // If two words: use first letter of each
+  if (words.length === 2) {
+    return words.map(w => {
+      // Extract first letter or number
+      const firstChar = w.match(/[a-zA-Z0-9]/)?.[0] || w.charAt(0)
+      return firstChar.toUpperCase()
+    }).join('')
+  }
+  
+  // If three or more words: use first letter of first 2-3 words
+  if (words.length >= 3) {
+    return words.slice(0, 3).map(w => {
+      const firstChar = w.match(/[a-zA-Z0-9]/)?.[0] || w.charAt(0)
+      return firstChar.toUpperCase()
+    }).join('')
+  }
+  
+  // Single word: use first 2-3 letters if short, otherwise first 2 letters
+  if (words.length === 1 && firstWord) {
+    if (firstWord.length <= 4) {
+      return firstWord.toUpperCase()
+    }
+    // For longer words, take first 2 characters (prefer letters)
+    const letters = firstWord.match(/[a-zA-Z0-9]{1,2}/)?.[0] || firstWord.substring(0, 2)
+    return letters.toUpperCase()
+  }
+  
+  // Fallback: first character
+  return name.charAt(0).toUpperCase()
+}
+
+// Pastel color palette
+const pastelColors = [
+  { bg: '#FFB5A7', text: '#8B4513' }, // peach
+  { bg: '#C8A8E9', text: '#4A148C' }, // lavender
+  { bg: '#A8E6CF', text: '#004D40' }, // mint
+  { bg: '#FFD3A5', text: '#E65100' }, // soft-yellow
+  { bg: '#FFB6C1', text: '#880E4F' }, // warm-pink
+  { bg: '#B5E5E8', text: '#01579B' }, // soft-blue
+  { bg: '#FFE4B5', text: '#BF360C' }, // moccasin
+  { bg: '#DDA0DD', text: '#4A148C' }, // plum
+  { bg: '#98D8C8', text: '#004D40' }, // turquoise
+  { bg: '#F0E68C', text: '#827717' }, // khaki
+  { bg: '#FFB3BA', text: '#880E4F' }, // pink
+  { bg: '#BAE1FF', text: '#01579B' }, // sky blue
+]
+
+// Generate consistent hash for game name
+const getGameHash = (name: string): number => {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return Math.abs(hash)
+}
+
+// Generate consistent pastel background color based on game name
+const getGameColor = (name: string): string => {
+  const hash = getGameHash(name)
+  const index = hash % pastelColors.length
+  const color = pastelColors[index]
+  if (!color) {
+    return '#FFB5A7' // fallback to peach
+  }
+  return color.bg
+}
+
+// Generate consistent text color based on game name
+const getGameTextColor = (name: string): string => {
+  const hash = getGameHash(name)
+  const index = hash % pastelColors.length
+  const color = pastelColors[index]
+  if (!color) {
+    return '#8B4513' // fallback to brown
+  }
+  return color.text
+}
 
 // Extract games list from Gams.html structure
 const gamesData = [
@@ -108,6 +206,9 @@ const gamesData = [
   { name: 'Ruffle Flash Player', href: 'Gams-main/g/g/Ruffle/Ruffle.html' },
   { name: 'Code Editor', type: 'raw' },
   { name: 'Web Retro' },
+
+  { title: 'Offline Pack', type: 'section' },
+  // Offline Pack games are loaded dynamically from /api/games/offline-list
 ]
 
 // Process games data into structured format
@@ -115,13 +216,18 @@ const games = computed<Game[]>(() => {
   const result: Game[] = []
   let currentSection = ''
 
+  // Process static games data
   gamesData.forEach((item) => {
     if (item.type === 'section' && item.title) {
       currentSection = item.title
     } else if (item.name) {
       const imgName = item.name.toLowerCase().replace(/\s/g, '')
       const href = item.href || `Gams-main/g/${imgName}.html`
-      const img = `Gams-main/img/${imgName}.png`
+      
+      // Use default placeholder for offline pack games (they don't have images)
+      const img = href.includes('Offline-HTML-Games-Pack-master')
+        ? 'Gams-main/img/gams-g.png'
+        : `Gams-main/img/${imgName}.png`
 
       result.push({
         name: item.name,
@@ -132,6 +238,19 @@ const games = computed<Game[]>(() => {
       })
     }
   })
+
+  // Add dynamically loaded offline games
+  if (offlineGames.value.length > 0) {
+    offlineGames.value.forEach((game) => {
+      result.push({
+        name: game.name,
+        href: game.href,
+        section: 'Offline Pack',
+        img: 'Gams-main/img/gams-g.png', // Default placeholder
+        isOfflinePack: true,
+      })
+    })
+  }
 
   return result
 })
@@ -170,10 +289,57 @@ const openGame = (game: Game) => {
   })
 }
 
+const openGameFromHistory = (historyItem: { game_id: string; game_href: string }) => {
+  router.push({
+    name: 'Game',
+    params: { id: historyItem.game_id },
+    query: { href: historyItem.game_href },
+  })
+}
+
+// Find game in gamesData by name or href
+const findGameInDataSet = (gameName: string, gameHref: string): Game | null => {
+  return games.value.find(
+    (g) => g.name.toLowerCase() === gameName.toLowerCase() || g.href === gameHref
+  ) || null
+}
+
+// Get game image or determine if should use abbreviation
+const getHistoryGameDisplay = (historyItem: { game_name: string; game_href: string }) => {
+  const game = findGameInDataSet(historyItem.game_name, historyItem.game_href)
+  if (game && !game.isOfflinePack) {
+    return { type: 'image' as const, img: game.img, name: game.name }
+  }
+  return { type: 'abbreviation' as const, name: historyItem.game_name }
+}
+
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 onMounted(async () => {
   await nextTick()
+
+  // Load offline games from API
+  try {
+    const response = await fetch('/api/games/offline-list')
+    if (response.ok) {
+      const data = await response.json()
+      offlineGames.value = data.games || []
+    }
+  } catch (error) {
+    console.error('Failed to load offline games:', error)
+  }
+
+  // Load game history if authenticated
+  if (isAuthenticated.value) {
+    try {
+      const response = await api.getGameHistory()
+      if (response.data) {
+        gameHistory.value = response.data.history || []
+      }
+    } catch (error) {
+      console.error('Failed to load game history:', error)
+    }
+  }
 
   // Set initial states to prevent flash
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
@@ -323,6 +489,64 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!-- Game History Section (if signed in) -->
+      <div v-if="isAuthenticated && gameHistory.length > 0" class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+          <ClockIcon class="w-4 h-4 text-gray-600" />
+          <h2 class="text-base font-medium text-gray-700">Recently Played</h2>
+        </div>
+        <div class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2">
+          <button
+            v-for="item in gameHistory"
+            :key="item.game_id"
+            @click="openGameFromHistory(item)"
+            :class="cn(
+              'group relative overflow-hidden rounded-lg',
+              'bg-white/40 backdrop-blur-md border border-gray-200/50',
+              'hover:bg-white/60 transition-all duration-300',
+              'hover:scale-105 active:scale-95',
+              'shadow-sm hover:shadow-md',
+            )"
+          >
+            <!-- Game icon/image or abbreviation -->
+            <div
+              v-if="getHistoryGameDisplay(item).type === 'image'"
+              class="aspect-square relative overflow-hidden rounded-t-lg"
+            >
+              <img
+                :src="`/${getHistoryGameDisplay(item).img}`"
+                :alt="item.game_name"
+                class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                @error="
+                  ($event.target as HTMLImageElement).src = '/Gams-main/img/gams-g.png'
+                "
+              />
+              <div
+                class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              />
+            </div>
+            <div
+              v-else
+              class="aspect-square relative overflow-hidden rounded-t-lg flex items-center justify-center"
+              :style="{ backgroundColor: getGameColor(item.game_name) }"
+            >
+              <span
+                class="text-lg font-semibold transition-transform duration-300 group-hover:scale-110"
+                :style="{ color: getGameTextColor(item.game_name) }"
+              >
+                {{ getGameAbbreviation(item.game_name) }}
+              </span>
+            </div>
+            <!-- Game name -->
+            <div class="p-1.5">
+              <h3 class="text-xs font-medium text-gray-800 truncate">
+                {{ item.game_name }}
+              </h3>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <!-- Games grid -->
       <div
         v-if="filteredGames.length > 0"
@@ -343,7 +567,11 @@ onMounted(async () => {
             )
           "
         >
-          <div class="aspect-square relative overflow-hidden rounded-t-xl">
+          <!-- Image for gamesData games -->
+          <div
+            v-if="!game.isOfflinePack"
+            class="aspect-square relative overflow-hidden rounded-t-xl"
+          >
             <img
               :src="`/${game.img}`"
               :alt="game.name"
@@ -355,6 +583,20 @@ onMounted(async () => {
             <div
               class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             />
+          </div>
+          
+          <!-- Abbreviation for offline pack games -->
+          <div
+            v-else
+            class="aspect-square relative overflow-hidden rounded-t-xl flex items-center justify-center"
+            :style="{ backgroundColor: getGameColor(game.name) }"
+          >
+            <span
+              class="text-3xl md:text-4xl font-semibold transition-transform duration-300 group-hover:scale-110"
+              :style="{ color: getGameTextColor(game.name) }"
+            >
+              {{ getGameAbbreviation(game.name) }}
+            </span>
           </div>
           <div class="p-3 md:p-4">
             <h3
