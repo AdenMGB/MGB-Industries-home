@@ -26,6 +26,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/ContactPage.vue'),
     meta: { transition: 'zoom' },
   },
+  {
+    path: '/games',
+    name: 'Games',
+    component: () => import('@/pages/GamesPage.vue'),
+    meta: { transition: 'slide-up' },
+  },
+  {
+    path: '/games/:id',
+    name: 'Game',
+    component: () => import('@/pages/GamePage.vue'),
+    meta: { transition: 'zoom' },
+  },
 ]
 
 const router = createRouter({
