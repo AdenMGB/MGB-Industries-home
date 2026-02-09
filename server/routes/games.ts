@@ -7,6 +7,8 @@ export async function gameListRoutes(fastify: FastifyInstance) {
     try {
       // Check both possible locations for offline games
       const possibleDirs = [
+        join('/app', 'data', 'games', 'Offline-HTML-Games-Pack-master', 'offline'),
+        join('/app', 'data', 'games', 'offline'),
         join(process.cwd(), 'data', 'games', 'Offline-HTML-Games-Pack-master', 'offline'),
         join(process.cwd(), 'data', 'games', 'offline'),
         join('/data', 'games', 'Offline-HTML-Games-Pack-master', 'offline'),
@@ -36,9 +38,20 @@ export async function gameListRoutes(fastify: FastifyInstance) {
         .sort()
       
       // Determine the relative path for href
-      const relativePath = offlineDir.includes('Offline-HTML-Games-Pack-master')
-        ? 'data/games/Offline-HTML-Games-Pack-master/offline'
-        : 'data/games/offline'
+      let relativePath: string
+      if (offlineDir.includes('/app/data/games')) {
+        relativePath = offlineDir.includes('Offline-HTML-Games-Pack-master')
+          ? 'data/games/Offline-HTML-Games-Pack-master/offline'
+          : 'data/games/offline'
+      } else if (offlineDir.includes(process.cwd())) {
+        relativePath = offlineDir.includes('Offline-HTML-Games-Pack-master')
+          ? 'data/games/Offline-HTML-Games-Pack-master/offline'
+          : 'data/games/offline'
+      } else {
+        relativePath = offlineDir.includes('Offline-HTML-Games-Pack-master')
+          ? 'data/games/Offline-HTML-Games-Pack-master/offline'
+          : 'data/games/offline'
+      }
       
       const games = htmlFiles.map(file => {
         const name = file.replace(/\.(html|htm)$/i, '')

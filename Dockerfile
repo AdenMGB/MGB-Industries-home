@@ -61,8 +61,8 @@ COPY server ./server
 COPY tsconfig*.json ./
 
 # Create data directory mount point with proper permissions
-RUN mkdir -p /data/games /data/database && \
-    chmod 755 /data
+RUN mkdir -p /app/data/games /app/data/database && \
+    chmod 755 /app/data
 
 # Create nginx configuration with API proxy
 RUN printf 'server {\n\
@@ -83,11 +83,11 @@ RUN printf 'server {\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
-    # Serve games from mounted volume\n\
-    location /data/games {\n\
-        alias /data/games;\n\
-        try_files $uri $uri/ =404;\n\
-    }\n\
+        # Serve games from mounted volume\n\
+        location /data/games {\n\
+            alias /app/data/games;\n\
+            try_files $uri $uri/ =404;\n\
+        }\n\
     \n\
     # SPA routing\n\
     location / {\n\
@@ -138,7 +138,7 @@ wait\n' > /start.sh && chmod +x /start.sh
 RUN mkdir -p /var/run /run /tmp /var/cache/nginx /var/log/nginx /app/tmp && \
     chown -R app-user:app-user /usr/share/nginx/html && \
     chown -R app-user:app-user /app && \
-    chown -R app-user:app-user /data && \
+    chown -R app-user:app-user /app/data && \
     chmod 1777 /tmp && \
     chmod 755 /var/run /run /app/tmp
 
