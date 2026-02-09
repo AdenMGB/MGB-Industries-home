@@ -38,7 +38,7 @@ RUN addgroup -g 1001 -S nginx-user && \
 # Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration for SPA routing
+# Copy nginx configuration for SPA routing and games directory
 RUN echo 'server { \
     listen 80; \
     server_name _; \
@@ -46,6 +46,11 @@ RUN echo 'server { \
     index index.html; \
     location / { \
         try_files $uri $uri/ /index.html; \
+    } \
+    # Serve games from mounted volume \
+    location /data/games { \
+        alias /data/games; \
+        try_files $uri $uri/ =404; \
     } \
     # Security headers \
     add_header X-Frame-Options "SAMEORIGIN" always; \
@@ -58,6 +63,10 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/conf.d/default.conf
 
+# Create data directory mount point with proper permissions
+RUN mkdir -p /data/games /data/database && \
+    chmod 755 /data
+
 # Fix permissions
 RUN chown -R nginx-user:nginx-user /usr/share/nginx/html && \
     chown -R nginx-user:nginx-user /var/cache/nginx && \
@@ -65,6 +74,9 @@ RUN chown -R nginx-user:nginx-user /usr/share/nginx/html && \
     chown -R nginx-user:nginx-user /etc/nginx/conf.d && \
     touch /var/run/nginx.pid && \
     chown -R nginx-user:nginx-user /var/run/nginx.pid
+
+# Note: /data/games will be mounted as a volume, so permissions depend on host
+# The volume mount should be readable by the nginx-user (UID 1001) or world-readable
 
 # Switch to non-root user
 USER nginx-user

@@ -81,10 +81,11 @@ The application will be available at `http://localhost:8080`.
 # Pull the image
 docker pull ghcr.io/your-username/aden-website:latest
 
-# Run the container
+# Run the container with data directory mounted (includes games and database)
 docker run -d \
   --name aden-website \
   -p 8080:80 \
+  -v $(pwd)/data:/data \
   --restart unless-stopped \
   ghcr.io/your-username/aden-website:latest
 ```
@@ -95,14 +96,17 @@ docker run -d \
 # Build the Docker image
 docker build -t aden-website:latest .
 
-# Run the container
+# Run the container with data directory mounted (includes games and database)
 docker run -d \
   --name aden-website \
   -p 8080:80 \
+  -v $(pwd)/data:/data \
   aden-website:latest
 ```
 
 ## Docker Compose
+
+The `docker-compose.yml` file mounts the entire `data` directory so games and database can persist without rebuilding the container:
 
 ```yaml
 version: '3.8'
@@ -116,6 +120,8 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+    volumes:
+      - ./data:/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
@@ -123,3 +129,5 @@ services:
       retries: 3
       start_period: 5s
 ```
+
+**Note:** The `data` directory contains both games (`data/games`) and the database. This directory is mounted so games can be added and database persists without rebuilding the container.

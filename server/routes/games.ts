@@ -5,13 +5,40 @@ import { join } from 'node:path'
 export async function gameListRoutes(fastify: FastifyInstance) {
   fastify.get('/api/games/offline-list', async (request, reply) => {
     try {
-      const offlineDir = join(process.cwd(), 'public', 'Offline-HTML-Games-Pack-master', 'offline')
+      // Check both possible locations for offline games
+      const possibleDirs = [
+        join(process.cwd(), 'data', 'games', 'Offline-HTML-Games-Pack-master', 'offline'),
+        join(process.cwd(), 'data', 'games', 'offline'),
+        join('/data', 'games', 'Offline-HTML-Games-Pack-master', 'offline'),
+        join('/data', 'games', 'offline'),
+      ]
+      
+      let offlineDir: string | null = null
+      for (const dir of possibleDirs) {
+        try {
+          await readdir(dir)
+          offlineDir = dir
+          break
+        } catch {
+          // Try next directory
+        }
+      }
+      
+      if (!offlineDir) {
+        return { games: [] }
+      }
+      
       const files = await readdir(offlineDir)
       
       const htmlFiles = files
         .filter(f => f.endsWith('.html') || f.endsWith('.htm'))
         .filter(f => !f.includes('epicviewer') && !f.includes('single-file') && !f.includes('compressed'))
         .sort()
+      
+      // Determine the relative path for href
+      const relativePath = offlineDir.includes('Offline-HTML-Games-Pack-master')
+        ? 'data/games/Offline-HTML-Games-Pack-master/offline'
+        : 'data/games/offline'
       
       const games = htmlFiles.map(file => {
         const name = file.replace(/\.(html|htm)$/i, '')
@@ -26,7 +53,7 @@ export async function gameListRoutes(fastify: FastifyInstance) {
         
         return {
           name: readableName || name,
-          href: `Offline-HTML-Games-Pack-master/offline/${file}`,
+          href: `${relativePath}/${file}`,
         }
       })
       

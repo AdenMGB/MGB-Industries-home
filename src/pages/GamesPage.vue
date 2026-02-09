@@ -16,7 +16,6 @@ interface Game {
   name: string
   href: string
   section: string
-  img: string
   type?: string
   isOfflinePack?: boolean
 }
@@ -123,10 +122,10 @@ const getGameTextColor = (name: string): string => {
 const gamesData = [
   { title: 'Basic', type: 'section' },
   { name: 'Stickman Hook' },
-  { name: 'Drive Mad', href: 'Gams-main/g/g/drivemad/drivemad.html' },
+  { name: 'Drive Mad', href: 'data/games/g/g/drivemad/drivemad.html' },
   { name: '2048' },
-  { name: 'Cookie Clicker', href: 'Gams-main/g/g/cookie/index.html' },
-  { name: 'Cube Field', href: 'Gams-main/g/g/cubefield/index.html' },
+  { name: 'Cookie Clicker', href: 'data/games/g/g/cookie/index.html' },
+  { name: 'Cube Field', href: 'data/games/g/g/cubefield/index.html' },
   { name: 'Spacebar Clicker' },
   { name: 'Offline Paradise' },
   { name: 'Sand Game' },
@@ -147,19 +146,19 @@ const gamesData = [
 
   { title: 'Unity', type: 'section' },
   { name: 'Slope' },
-  { name: 'Burrito Bison', href: 'Gams-main/g/g/burritobison/burritobison.html' },
+  { name: 'Burrito Bison', href: 'data/games/g/g/burritobison/burritobison.html' },
   { name: 'Tube Jumpers' },
   { name: 'Hole IO' },
-  { name: 'Madalin Stunt Cars', href: 'Gams-main/g/g/madalinstuntcars/madalinstuntcars.html' },
-  { name: 'Glass City', href: 'Gams-main/g/g/glasscity/glasscity.html' },
-  { name: 'Tunnel Rush', href: 'Gams-main/g/g/tunnelrush/tunnelrush.html' },
-  { name: 'Tanuki Sunset', href: 'Gams-main/g/g/tanukisunset/tanukisunset.html' },
-  { name: 'A Dance of Fire and Ice', href: 'Gams-main/g/g/fireice/index.html' },
-  { name: 'Game Inside a Game', href: 'Gams-main/g/g/gameinsideagame/index.html' },
-  { name: 'Cell Machine', href: 'Gams-main/g/g/cellmachine/index.html' },
-  { name: 'Slope 2', href: 'Gams-main/g/g/slope2/index.html' },
-  { name: 'Ai Creatures', href: 'Gams-main/g/g/aicreatures/index.html' },
-  { name: 'Grey Box Testing', href: 'Gams-main/g/g/greybox/index.html' },
+  { name: 'Madalin Stunt Cars', href: 'data/games/g/g/madalinstuntcars/madalinstuntcars.html' },
+  { name: 'Glass City', href: 'data/games/g/g/glasscity/glasscity.html' },
+  { name: 'Tunnel Rush', href: 'data/games/g/g/tunnelrush/tunnelrush.html' },
+  { name: 'Tanuki Sunset', href: 'data/games/g/g/tanukisunset/tanukisunset.html' },
+  { name: 'A Dance of Fire and Ice', href: 'data/games/g/g/fireice/index.html' },
+  { name: 'Game Inside a Game', href: 'data/games/g/g/gameinsideagame/index.html' },
+  { name: 'Cell Machine', href: 'data/games/g/g/cellmachine/index.html' },
+  { name: 'Slope 2', href: 'data/games/g/g/slope2/index.html' },
+  { name: 'Ai Creatures', href: 'data/games/g/g/aicreatures/index.html' },
+  { name: 'Grey Box Testing', href: 'data/games/g/g/greybox/index.html' },
 
   { title: 'Retrogaming', type: 'section' },
   { name: 'Super Mario 64' },
@@ -203,7 +202,7 @@ const gamesData = [
   { name: 'Duck Life 5' },
 
   { title: 'Tools', type: 'section' },
-  { name: 'Ruffle Flash Player', href: 'Gams-main/g/g/Ruffle/Ruffle.html' },
+  { name: 'Ruffle Flash Player', href: 'data/games/g/g/Ruffle/Ruffle.html' },
   { name: 'Code Editor', type: 'raw' },
   { name: 'Web Retro' },
 
@@ -222,18 +221,12 @@ const games = computed<Game[]>(() => {
       currentSection = item.title
     } else if (item.name) {
       const imgName = item.name.toLowerCase().replace(/\s/g, '')
-      const href = item.href || `Gams-main/g/${imgName}.html`
-      
-      // Use default placeholder for offline pack games (they don't have images)
-      const img = href.includes('Offline-HTML-Games-Pack-master')
-        ? 'Gams-main/img/gams-g.png'
-        : `Gams-main/img/${imgName}.png`
+      const href = item.href || `data/games/g/${imgName}.html`
 
       result.push({
         name: item.name,
         href,
         section: currentSection,
-        img,
         type: item.type,
       })
     }
@@ -246,7 +239,6 @@ const games = computed<Game[]>(() => {
         name: game.name,
         href: game.href,
         section: 'Offline Pack',
-        img: 'Gams-main/img/gams-g.png', // Default placeholder
         isOfflinePack: true,
       })
     })
@@ -304,12 +296,8 @@ const findGameInDataSet = (gameName: string, gameHref: string): Game | null => {
   ) || null
 }
 
-// Get game image or determine if should use abbreviation
+// Always use abbreviation for game display
 const getHistoryGameDisplay = (historyItem: { game_name: string; game_href: string }) => {
-  const game = findGameInDataSet(historyItem.game_name, historyItem.game_href)
-  if (game && !game.isOfflinePack) {
-    return { type: 'image' as const, img: game.img, name: game.name }
-  }
   return { type: 'abbreviation' as const, name: historyItem.game_name }
 }
 
@@ -508,25 +496,8 @@ onMounted(async () => {
               'shadow-sm hover:shadow-md',
             )"
           >
-            <!-- Game icon/image or abbreviation -->
+            <!-- Abbreviation for all games -->
             <div
-              v-if="getHistoryGameDisplay(item).type === 'image'"
-              class="aspect-square relative overflow-hidden rounded-t-lg"
-            >
-              <img
-                :src="`/${getHistoryGameDisplay(item).img}`"
-                :alt="item.game_name"
-                class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                @error="
-                  ($event.target as HTMLImageElement).src = '/Gams-main/img/gams-g.png'
-                "
-              />
-              <div
-                class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              />
-            </div>
-            <div
-              v-else
               class="aspect-square relative overflow-hidden rounded-t-lg flex items-center justify-center"
               :style="{ backgroundColor: getGameColor(item.game_name) }"
             >
@@ -567,27 +538,8 @@ onMounted(async () => {
             )
           "
         >
-          <!-- Image for gamesData games -->
+          <!-- Abbreviation for all games -->
           <div
-            v-if="!game.isOfflinePack"
-            class="aspect-square relative overflow-hidden rounded-t-xl"
-          >
-            <img
-              :src="`/${game.img}`"
-              :alt="game.name"
-              class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              @error="
-                ($event.target as HTMLImageElement).src = '/Gams-main/img/gams-g.png'
-              "
-            />
-            <div
-              class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            />
-          </div>
-          
-          <!-- Abbreviation for offline pack games -->
-          <div
-            v-else
             class="aspect-square relative overflow-hidden rounded-t-xl flex items-center justify-center"
             :style="{ backgroundColor: getGameColor(game.name) }"
           >
