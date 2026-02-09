@@ -128,18 +128,19 @@ nginx &\n\
 nginx_pid=$!\n\
 \n\
 # Start Node.js server in background (as app-user)\n\
-su-exec app-user sh -c "cd /app && tsx server/index.ts" &\n\
+su-exec app-user sh -c "cd /app && TMPDIR=/app/tmp tsx server/index.ts" &\n\
 nodejs_pid=$!\n\
 \n\
 # Wait for all background processes\n\
 wait\n' > /start.sh && chmod +x /start.sh
 
 # Create necessary directories and fix permissions
-RUN mkdir -p /var/run /run /tmp /var/cache/nginx /var/log/nginx && \
+RUN mkdir -p /var/run /run /tmp /var/cache/nginx /var/log/nginx /app/tmp && \
     chown -R app-user:app-user /usr/share/nginx/html && \
     chown -R app-user:app-user /app && \
     chown -R app-user:app-user /data && \
-    chmod 755 /var/run /run /tmp
+    chmod 1777 /tmp && \
+    chmod 755 /var/run /run /app/tmp
 
 # Note: nginx runs as root to bind to port 80, Node.js server runs as app-user
 
