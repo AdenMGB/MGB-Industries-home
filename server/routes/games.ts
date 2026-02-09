@@ -151,11 +151,21 @@ export async function gameListRoutes(fastify: FastifyInstance) {
       let normalizedPath = filePath.replace(/^data\/games\//, '').replace(/^\/+/, '')
       
       // Try multiple possible paths (direct, Gams-main, etc.)
-      const possiblePaths = [
-        normalizedPath, // Direct path: g/stickmanhook.html
-        join('Gams-main', normalizedPath), // In Gams-main: Gams-main/g/stickmanhook.html
-        join('Offline-HTML-Games-Pack-master', 'offline', normalizedPath.split('/').pop() || ''), // In offline pack
-      ]
+      // If path already starts with Gams-main or Offline-HTML-Games-Pack-master, use it directly
+      const possiblePaths: string[] = []
+      if (normalizedPath.startsWith('Gams-main/') || normalizedPath.startsWith('Offline-HTML-Games-Pack-master/')) {
+        // Path already includes the subdirectory, use it as-is
+        possiblePaths.push(normalizedPath)
+      } else {
+        // Try different locations
+        possiblePaths.push(normalizedPath) // Direct path: g/stickmanhook.html
+        possiblePaths.push(join('Gams-main', normalizedPath)) // In Gams-main: Gams-main/g/stickmanhook.html
+        // For nested paths like g/Ruffle/swfs/file.js, also try Gams-main/g/Ruffle/swfs/file.js
+        if (normalizedPath.startsWith('g/')) {
+          possiblePaths.push(join('Gams-main', normalizedPath)) // Already added above, but keep for clarity
+        }
+        possiblePaths.push(join('Offline-HTML-Games-Pack-master', 'offline', normalizedPath.split('/').pop() || '')) // In offline pack
+      }
       
       // Try each base directory to find the file
       let finalPath: string | null = null
@@ -181,7 +191,11 @@ export async function gameListRoutes(fastify: FastifyInstance) {
               baseDir = normalizedBaseDir
               fastify.log.info(`Found file at: ${finalPath}`)
               break
+            } else {
+              fastify.log.debug(`File does not exist at: ${normalizedTestPath}`)
             }
+          } else {
+            fastify.log.debug(`Path security check failed: ${testPathNormalized} not within ${baseDirNormalized}`)
           }
         }
         if (finalPath) break
@@ -226,10 +240,20 @@ export async function gameListRoutes(fastify: FastifyInstance) {
       if (ext === '.html' || ext === '.htm') {
         const htmlContent = content.toString('utf-8')
         // Calculate the directory path relative to baseDir for the base tag
+        // finalPath is the absolute path to the HTML file
+        // We need to get the directory containing the HTML file, relative to baseDir
         const fileDir = join(finalPath, '..')
         const relativeDir = relative(baseDir!, fileDir).replace(/\\/g, '/')
-        // Ensure the base path matches the API endpoint structure
-        const basePath = `/api/games/file/${relativeDir && relativeDir !== '.' ? relativeDir + '/' : ''}`
+        // Build the base path - this should be the directory containing the HTML file
+        // relativeDir might be empty ('.'), 'Gams-main/g', etc.
+        let basePath: string
+        if (relativeDir === '.' || relativeDir === '') {
+          basePath = '/api/games/file/'
+        } else {
+          basePath = `/api/games/file/${relativeDir}/`
+        }
+        
+        fastify.log.debug(`HTML file: ${finalPath}, baseDir: ${baseDir}, relativeDir: ${relativeDir}, basePath: ${basePath}`)
         
         // Inject base tag after <head> or at the beginning if no head tag
         let modifiedContent = htmlContent
