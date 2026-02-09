@@ -83,12 +83,6 @@ RUN printf 'server {\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
-        # Serve games from mounted volume\n\
-        location /data/games {\n\
-            root /app;\n\
-            try_files $uri =404;\n\
-        }\n\
-    \n\
     # SPA routing\n\
     location / {\n\
         try_files $uri $uri/ /index.html;\n\

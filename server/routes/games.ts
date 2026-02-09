@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
-import { readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { readdir, readFile, stat } from 'node:fs/promises'
+import { join, extname, relative, resolve, normalize } from 'node:path'
+import { existsSync } from 'node:fs'
 
 export async function gameListRoutes(fastify: FastifyInstance) {
   fastify.get('/api/games/offline-list', async (request, reply) => {
@@ -66,7 +67,7 @@ export async function gameListRoutes(fastify: FastifyInstance) {
         
         return {
           name: readableName || name,
-          href: `${relativePath}/${file}`,
+          href: `${relativePath}/${file}`, // Keep original path for API endpoint
         }
       })
       
@@ -74,6 +75,190 @@ export async function gameListRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       fastify.log.error(error)
       return reply.code(500).send({ error: 'Failed to list offline games' })
+    }
+  })
+
+  // API endpoint to list all files in a directory recursively
+  fastify.get('/api/games/list-files', async (request, reply) => {
+    try {
+      const { path: dirPath } = request.query as { path?: string }
+      const baseDir = join('/app', 'data', 'games')
+      const targetDir = dirPath ? join(baseDir, dirPath) : baseDir
+
+      // Security: ensure the path is within baseDir
+      if (!targetDir.startsWith(baseDir)) {
+        return reply.code(403).send({ error: 'Access denied' })
+      }
+
+      if (!existsSync(targetDir)) {
+        return reply.code(404).send({ error: 'Directory not found' })
+      }
+
+      const files: Array<{ name: string; path: string; isDirectory: boolean; size?: number }> = []
+
+      async function scanDirectory(dir: string, relativePath: string = '') {
+        const entries = await readdir(dir, { withFileTypes: true })
+        
+        for (const entry of entries) {
+          const fullPath = join(dir, entry.name)
+          const relPath = relativePath ? join(relativePath, entry.name) : entry.name
+          
+          if (entry.isDirectory()) {
+            files.push({
+              name: entry.name,
+              path: relPath,
+              isDirectory: true,
+            })
+            // Recursively scan subdirectories
+            await scanDirectory(fullPath, relPath)
+          } else {
+            const stats = await stat(fullPath)
+            files.push({
+              name: entry.name,
+              path: relPath,
+              isDirectory: false,
+              size: stats.size,
+            })
+          }
+        }
+      }
+
+      await scanDirectory(targetDir)
+      
+      return { files }
+    } catch (error: any) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Failed to list files' })
+    }
+  })
+
+  // API endpoint to serve game files
+  // Use catch-all route pattern
+  fastify.get('/api/games/file/*', async (request, reply) => {
+    try {
+      // Fastify wildcard captures everything after the route
+      const filePath = decodeURIComponent((request.url.split('/api/games/file/')[1] || '').split('?')[0])
+      
+      // Try both possible base directories (dev and production)
+      const possibleBaseDirs = [
+        '/app/data/games', // Docker production
+        join(process.cwd(), 'data', 'games'), // Development
+      ]
+      
+      fastify.log.info(`File request: ${filePath}`)
+      
+      // Normalize the file path - remove leading "data/games" if present
+      let normalizedPath = filePath.replace(/^data\/games\//, '').replace(/^\/+/, '')
+      
+      // Try multiple possible paths (direct, Gams-main, etc.)
+      const possiblePaths = [
+        normalizedPath, // Direct path: g/stickmanhook.html
+        join('Gams-main', normalizedPath), // In Gams-main: Gams-main/g/stickmanhook.html
+        join('Offline-HTML-Games-Pack-master', 'offline', normalizedPath.split('/').pop() || ''), // In offline pack
+      ]
+      
+      // Try each base directory to find the file
+      let finalPath: string | null = null
+      let baseDir: string | null = null
+      
+      for (const possibleBaseDir of possibleBaseDirs) {
+        for (const pathToTry of possiblePaths) {
+          // Use resolve to get absolute path, then normalize
+          const resolvedBaseDir = resolve(possibleBaseDir)
+          const testPath = resolve(resolvedBaseDir, pathToTry)
+          const normalizedTestPath = normalize(testPath)
+          const normalizedBaseDir = normalize(resolvedBaseDir)
+          
+          // Security: ensure the resolved path is within baseDir (prevents directory traversal)
+          // Normalize both to forward slashes for comparison
+          const testPathNormalized = normalizedTestPath.replace(/\\/g, '/')
+          const baseDirNormalized = normalizedBaseDir.replace(/\\/g, '/')
+          
+          if (testPathNormalized.startsWith(baseDirNormalized + '/') || testPathNormalized === baseDirNormalized) {
+            // Check if file exists using the actual resolved path
+            if (existsSync(normalizedTestPath)) {
+              finalPath = normalizedTestPath
+              baseDir = normalizedBaseDir
+              fastify.log.info(`Found file at: ${finalPath}`)
+              break
+            }
+          }
+        }
+        if (finalPath) break
+      }
+      
+      if (!finalPath || !baseDir) {
+        const triedPaths = possibleBaseDirs.map(d => resolve(d, normalizedPath))
+        fastify.log.warn(`File not found: ${filePath}, tried paths: ${triedPaths.join(', ')}`)
+        return reply.code(404).send({ error: 'File not found', path: filePath, tried: triedPaths })
+      }
+
+      const stats = await stat(finalPath)
+      if (stats.isDirectory()) {
+        return reply.code(400).send({ error: 'Path is a directory' })
+      }
+
+      // Read file content
+      let content = await readFile(finalPath)
+      
+      // Determine content type based on file extension
+      const ext = extname(finalPath).toLowerCase()
+      const contentTypeMap: Record<string, string> = {
+        '.html': 'text/html',
+        '.htm': 'text/html',
+        '.js': 'application/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.woff': 'font/woff',
+        '.woff2': 'font/woff2',
+        '.ttf': 'font/ttf',
+        '.eot': 'application/vnd.ms-fontobject',
+      }
+
+      const contentType = contentTypeMap[ext] || 'application/octet-stream'
+
+      // For HTML files, inject base tag to fix relative paths
+      if (ext === '.html' || ext === '.htm') {
+        const htmlContent = content.toString('utf-8')
+        // Calculate the directory path relative to baseDir for the base tag
+        const fileDir = join(finalPath, '..')
+        const relativeDir = relative(baseDir!, fileDir).replace(/\\/g, '/')
+        // Ensure the base path matches the API endpoint structure
+        const basePath = `/api/games/file/${relativeDir && relativeDir !== '.' ? relativeDir + '/' : ''}`
+        
+        // Inject base tag after <head> or at the beginning if no head tag
+        let modifiedContent = htmlContent
+        if (htmlContent.includes('<head>')) {
+          modifiedContent = htmlContent.replace(
+            '<head>',
+            `<head><base href="${basePath}">`
+          )
+        } else if (htmlContent.includes('<html>')) {
+          modifiedContent = htmlContent.replace(
+            '<html>',
+            `<html><head><base href="${basePath}"></head>`
+          )
+        } else {
+          // No head or html tag, prepend base tag
+          modifiedContent = `<head><base href="${basePath}"></head>${htmlContent}`
+        }
+        
+        content = Buffer.from(modifiedContent, 'utf-8')
+      }
+
+      // Set appropriate headers
+      reply.type(contentType)
+      reply.header('Cache-Control', 'public, max-age=3600')
+      
+      return reply.send(content)
+    } catch (error: any) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Failed to read file' })
     }
   })
 }

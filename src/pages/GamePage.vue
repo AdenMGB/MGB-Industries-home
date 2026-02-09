@@ -270,7 +270,7 @@ onUnmounted(() => {
 
           <iframe
             ref="iframeRef"
-            :src="`/${gameHref}`"
+            :src="`/api/games/file/${gameHref}`"
             class="w-full h-full border-0"
             frameborder="0"
             allowfullscreen
