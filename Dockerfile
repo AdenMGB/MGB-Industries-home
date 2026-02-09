@@ -1,7 +1,7 @@
 # Multi-stage build for Aden Website
 
 # Stage 1: Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -29,7 +29,7 @@ COPY public ./public
 RUN pnpm run build-only
 
 # Stage 2: Production stage
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 # Install nginx and su-exec (for running commands as different user)
 RUN apk add --no-cache nginx su-exec
