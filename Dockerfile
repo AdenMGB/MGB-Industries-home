@@ -31,8 +31,8 @@ RUN pnpm run build-only
 # Stage 2: Production stage
 FROM node:20-alpine AS production
 
-# Install nginx and supervisor
-RUN apk add --no-cache nginx supervisor
+# Install nginx and su-exec (for running commands as different user)
+RUN apk add --no-cache nginx su-exec
 
 # Create non-root user
 RUN addgroup -g 1001 -S app-user && \
@@ -65,83 +65,83 @@ RUN mkdir -p /data/games /data/database && \
     chmod 755 /data
 
 # Create nginx configuration with API proxy
-RUN echo 'server { \
-    listen 80; \
-    server_name _; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    \
-    # Proxy API requests to Node.js server \
-    location /api { \
-        proxy_pass http://localhost:3001; \
-        proxy_http_version 1.1; \
-        proxy_set_header Upgrade $http_upgrade; \
-        proxy_set_header Connection "upgrade"; \
-        proxy_set_header Host $host; \
-        proxy_set_header X-Real-IP $remote_addr; \
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
-        proxy_set_header X-Forwarded-Proto $scheme; \
-    } \
-    \
-    # Serve games from mounted volume \
-    location /data/games { \
-        alias /data/games; \
-        try_files $uri $uri/ =404; \
-    } \
-    \
-    # SPA routing \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-    \
-    # Security headers \
-    add_header X-Frame-Options "SAMEORIGIN" always; \
-    add_header X-Content-Type-Options "nosniff" always; \
-    add_header X-XSS-Protection "1; mode=block" always; \
-    \
-    # Cache static assets \
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ { \
-        expires 1y; \
-        add_header Cache-Control "public, immutable"; \
-    } \
-}' > /etc/nginx/http.d/default.conf
+RUN printf 'server {\n\
+    listen 80;\n\
+    server_name _;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    \n\
+    # Proxy API requests to Node.js server\n\
+    location /api {\n\
+        proxy_pass http://localhost:3001;\n\
+        proxy_http_version 1.1;\n\
+        proxy_set_header Upgrade $http_upgrade;\n\
+        proxy_set_header Connection "upgrade";\n\
+        proxy_set_header Host $host;\n\
+        proxy_set_header X-Real-IP $remote_addr;\n\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+        proxy_set_header X-Forwarded-Proto $scheme;\n\
+    }\n\
+    \n\
+    # Serve games from mounted volume\n\
+    location /data/games {\n\
+        alias /data/games;\n\
+        try_files $uri $uri/ =404;\n\
+    }\n\
+    \n\
+    # SPA routing\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+    \n\
+    # Security headers\n\
+    add_header X-Frame-Options "SAMEORIGIN" always;\n\
+    add_header X-Content-Type-Options "nosniff" always;\n\
+    add_header X-XSS-Protection "1; mode=block" always;\n\
+    \n\
+    # Cache static assets\n\
+    location ~* \\.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {\n\
+        expires 1y;\n\
+        add_header Cache-Control "public, immutable";\n\
+    }\n\
+}\n' > /etc/nginx/http.d/default.conf && \
+    # Update nginx.conf to use /tmp for pid file and ensure /run exists\n\
+    sed -i 's|pid /var/run/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf 2>/dev/null || true
 
-# Create supervisor configuration to run both nginx and Node.js server
-RUN mkdir -p /etc/supervisor.d && \
-    echo '[supervisord] \
-nodaemon=true \
-logfile=/var/log/supervisor/supervisord.log \
-pidfile=/var/run/supervisord.pid \
-\
-[program:nginx] \
-command=nginx -g "daemon off;" \
-stdout_logfile=/dev/stdout \
-stdout_logfile_maxbytes=0 \
-stderr_logfile=/dev/stderr \
-stderr_logfile_maxbytes=0 \
-autorestart=true \
-\
-[program:nodejs] \
-command=tsx server/index.ts \
-directory=/app \
-user=app-user \
-stdout_logfile=/dev/stdout \
-stdout_logfile_maxbytes=0 \
-stderr_logfile=/dev/stderr \
-stderr_logfile_maxbytes=0 \
-autorestart=true \
-environment=NODE_ENV="production",PORT="3001",DATABASE_PATH="/data/database/database.db",PATH="/usr/local/bin:/usr/bin:/bin" \
-' > /etc/supervisor.d/supervisord.conf
+# Create startup script to run both nginx and Node.js server
+RUN printf '#!/bin/sh\n\
+set -e\n\
+\n\
+# Function to handle shutdown\n\
+cleanup() {\n\
+    echo "Shutting down..."\n\
+    kill -TERM "$nginx_pid" 2>/dev/null || true\n\
+    kill -TERM "$nodejs_pid" 2>/dev/null || true\n\
+    wait\n\
+    exit 0\n\
+}\n\
+\n\
+trap cleanup TERM INT\n\
+\n\
+# Start nginx (runs in background by default)\n\
+nginx &\n\
+nginx_pid=$!\n\
+\n\
+# Start Node.js server in background (as app-user)\n\
+su-exec app-user sh -c "cd /app && tsx server/index.ts" &\n\
+nodejs_pid=$!\n\
+\n\
+# Wait for all background processes\n\
+wait\n' > /start.sh && chmod +x /start.sh
 
 # Create necessary directories and fix permissions
-RUN mkdir -p /var/log/supervisor /var/run /var/cache/nginx /var/log/nginx && \
+RUN mkdir -p /var/run /run /tmp /var/cache/nginx /var/log/nginx && \
     chown -R app-user:app-user /usr/share/nginx/html && \
     chown -R app-user:app-user /app && \
     chown -R app-user:app-user /data && \
-    chmod 755 /var/log/supervisor /var/run
+    chmod 755 /var/run /run /tmp
 
-# Note: nginx needs to run as root to bind to port 80, but supervisor will handle this
-# The app code runs as app-user where possible
+# Note: nginx runs as root to bind to port 80, Node.js server runs as app-user
 
 EXPOSE 80
 
@@ -149,5 +149,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
-# Start supervisor which will manage both nginx and Node.js
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor.d/supervisord.conf"]
+# Start both services using the startup script
+CMD ["/start.sh"]
