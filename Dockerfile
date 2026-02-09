@@ -85,8 +85,8 @@ RUN printf 'server {\n\
     \n\
         # Serve games from mounted volume\n\
         location /data/games {\n\
-            alias /app/data/games;\n\
-            try_files $uri $uri/ =404;\n\
+            root /app;\n\
+            try_files $uri =404;\n\
         }\n\
     \n\
     # SPA routing\n\
