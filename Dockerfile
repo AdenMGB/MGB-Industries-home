@@ -29,62 +29,125 @@ COPY public ./public
 RUN pnpm run build-only
 
 # Stage 2: Production stage
-FROM nginx:alpine AS production
+FROM node:20-alpine AS production
 
-# Create non-root user for nginx
-RUN addgroup -g 1001 -S nginx-user && \
-    adduser -S nginx-user -u 1001 -G nginx-user
+# Install nginx and supervisor
+RUN apk add --no-cache nginx supervisor
 
-# Copy built files from builder stage
+# Create non-root user
+RUN addgroup -g 1001 -S app-user && \
+    adduser -S app-user -u 1001 -G app-user
+
+# Install pnpm for running the server
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files for server dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Install production dependencies
+RUN pnpm install --prod --no-frozen-lockfile
+
+# Install tsx globally using npm (comes with node) to run TypeScript server code
+RUN npm install -g tsx
+
+# Copy built frontend files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration for SPA routing and games directory
-RUN echo 'server { \
-    listen 80; \
-    server_name _; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-    # Serve games from mounted volume \
-    location /data/games { \
-        alias /data/games; \
-        try_files $uri $uri/ =404; \
-    } \
-    # Security headers \
-    add_header X-Frame-Options "SAMEORIGIN" always; \
-    add_header X-Content-Type-Options "nosniff" always; \
-    add_header X-XSS-Protection "1; mode=block" always; \
-    # Cache static assets \
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ { \
-        expires 1y; \
-        add_header Cache-Control "public, immutable"; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# Copy server code
+COPY server ./server
+COPY tsconfig*.json ./
 
 # Create data directory mount point with proper permissions
 RUN mkdir -p /data/games /data/database && \
     chmod 755 /data
 
-# Fix permissions
-RUN chown -R nginx-user:nginx-user /usr/share/nginx/html && \
-    chown -R nginx-user:nginx-user /var/cache/nginx && \
-    chown -R nginx-user:nginx-user /var/log/nginx && \
-    chown -R nginx-user:nginx-user /etc/nginx/conf.d && \
-    touch /var/run/nginx.pid && \
-    chown -R nginx-user:nginx-user /var/run/nginx.pid
+# Create nginx configuration with API proxy
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    \
+    # Proxy API requests to Node.js server \
+    location /api { \
+        proxy_pass http://localhost:3001; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "upgrade"; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
+    } \
+    \
+    # Serve games from mounted volume \
+    location /data/games { \
+        alias /data/games; \
+        try_files $uri $uri/ =404; \
+    } \
+    \
+    # SPA routing \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
+    # Security headers \
+    add_header X-Frame-Options "SAMEORIGIN" always; \
+    add_header X-Content-Type-Options "nosniff" always; \
+    add_header X-XSS-Protection "1; mode=block" always; \
+    \
+    # Cache static assets \
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+}' > /etc/nginx/http.d/default.conf
 
-# Note: /data/games will be mounted as a volume, so permissions depend on host
-# The volume mount should be readable by the nginx-user (UID 1001) or world-readable
+# Create supervisor configuration to run both nginx and Node.js server
+RUN mkdir -p /etc/supervisor.d && \
+    echo '[supervisord] \
+nodaemon=true \
+logfile=/var/log/supervisor/supervisord.log \
+pidfile=/var/run/supervisord.pid \
+\
+[program:nginx] \
+command=nginx -g "daemon off;" \
+stdout_logfile=/dev/stdout \
+stdout_logfile_maxbytes=0 \
+stderr_logfile=/dev/stderr \
+stderr_logfile_maxbytes=0 \
+autorestart=true \
+\
+[program:nodejs] \
+command=tsx server/index.ts \
+directory=/app \
+user=app-user \
+stdout_logfile=/dev/stdout \
+stdout_logfile_maxbytes=0 \
+stderr_logfile=/dev/stderr \
+stderr_logfile_maxbytes=0 \
+autorestart=true \
+environment=NODE_ENV="production",PORT="3001",DATABASE_PATH="/data/database/database.db",PATH="/usr/local/bin:/usr/bin:/bin" \
+' > /etc/supervisor.d/supervisord.conf
 
-# Switch to non-root user
-USER nginx-user
+# Create necessary directories and fix permissions
+RUN mkdir -p /var/log/supervisor /var/run /var/cache/nginx /var/log/nginx && \
+    chown -R app-user:app-user /usr/share/nginx/html && \
+    chown -R app-user:app-user /app && \
+    chown -R app-user:app-user /data && \
+    chmod 755 /var/log/supervisor /var/run
+
+# Note: nginx needs to run as root to bind to port 80, but supervisor will handle this
+# The app code runs as app-user where possible
 
 EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Start supervisor which will manage both nginx and Node.js
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor.d/supervisord.conf"]
