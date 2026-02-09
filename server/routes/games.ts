@@ -202,9 +202,18 @@ export async function gameListRoutes(fastify: FastifyInstance) {
       }
       
       if (!finalPath || !baseDir) {
-        const triedPaths = possibleBaseDirs.map(d => resolve(d, normalizedPath))
-        fastify.log.warn(`File not found: ${filePath}, tried paths: ${triedPaths.join(', ')}`)
-        return reply.code(404).send({ error: 'File not found', path: filePath, tried: triedPaths })
+        // Log all attempted paths for debugging
+        const allAttemptedPaths: string[] = []
+        for (const possibleBaseDir of possibleBaseDirs) {
+          for (const pathToTry of possiblePaths) {
+            const resolvedBaseDir = resolve(possibleBaseDir)
+            const testPath = resolve(resolvedBaseDir, pathToTry)
+            allAttemptedPaths.push(normalize(testPath))
+          }
+        }
+        fastify.log.warn(`File not found: ${filePath}, normalized: ${normalizedPath}, tried ${allAttemptedPaths.length} paths`)
+        fastify.log.debug(`Attempted paths: ${allAttemptedPaths.slice(0, 10).join(', ')}${allAttemptedPaths.length > 10 ? '...' : ''}`)
+        return reply.code(404).send({ error: 'File not found', path: filePath, normalized: normalizedPath })
       }
 
       const stats = await stat(finalPath)
@@ -245,27 +254,32 @@ export async function gameListRoutes(fastify: FastifyInstance) {
         const fileDir = join(finalPath, '..')
         const relativeDir = relative(baseDir!, fileDir).replace(/\\/g, '/')
         // Build the base path - this should be the directory containing the HTML file
-        // relativeDir might be empty ('.'), 'Gams-main/g', etc.
+        // relativeDir might be empty ('.'), 'Gams-main/g/g/drivemad', etc.
         let basePath: string
         if (relativeDir === '.' || relativeDir === '') {
           basePath = '/api/games/file/'
         } else {
+          // Ensure we have the full path including any subdirectories
           basePath = `/api/games/file/${relativeDir}/`
         }
         
-        fastify.log.debug(`HTML file: ${finalPath}, baseDir: ${baseDir}, relativeDir: ${relativeDir}, basePath: ${basePath}`)
+        fastify.log.info(`HTML file: ${finalPath}, baseDir: ${baseDir}, relativeDir: ${relativeDir}, basePath: ${basePath}`)
         
         // Inject base tag after <head> or at the beginning if no head tag
+        // Use a more robust replacement that handles case-insensitive and whitespace
         let modifiedContent = htmlContent
-        if (htmlContent.includes('<head>')) {
+        const headTagRegex = /<head[^>]*>/i
+        const htmlTagRegex = /<html[^>]*>/i
+        
+        if (headTagRegex.test(htmlContent)) {
           modifiedContent = htmlContent.replace(
-            '<head>',
-            `<head><base href="${basePath}">`
+            headTagRegex,
+            (match) => `${match}<base href="${basePath}">`
           )
-        } else if (htmlContent.includes('<html>')) {
+        } else if (htmlTagRegex.test(htmlContent)) {
           modifiedContent = htmlContent.replace(
-            '<html>',
-            `<html><head><base href="${basePath}"></head>`
+            htmlTagRegex,
+            (match) => `${match}<head><base href="${basePath}"></head>`
           )
         } else {
           // No head or html tag, prepend base tag
@@ -278,6 +292,11 @@ export async function gameListRoutes(fastify: FastifyInstance) {
       // Set appropriate headers
       reply.type(contentType)
       reply.header('Cache-Control', 'public, max-age=3600')
+      
+      // For HTML files, also set charset to avoid encoding warnings
+      if (ext === '.html' || ext === '.htm') {
+        reply.header('Content-Type', `${contentType}; charset=utf-8`)
+      }
       
       return reply.send(content)
     } catch (error: any) {
