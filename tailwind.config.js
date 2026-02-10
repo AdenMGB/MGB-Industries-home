@@ -16,6 +16,9 @@ export default {
         'warm-pink': '#FFB6C1',
         'cream': '#FFF8E7',
         'soft-blue': '#B5E5E8',
+        'gray': {
+          950: '#0a0a0f',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

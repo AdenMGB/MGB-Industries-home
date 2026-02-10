@@ -16,6 +16,27 @@ export async function userRoutes(fastify: FastifyInstance) {
   // Get database from global instance
   const db = getDatabase()
 
+  // Get contact messages (admin only)
+  fastify.get('/api/admin/contact-messages', { preHandler: [requireAdmin] }, async (request, reply) => {
+    try {
+      const messages = db
+        .prepare(
+          'SELECT id, name, email, message, created_at FROM contact_messages ORDER BY created_at DESC LIMIT 100',
+        )
+        .all() as Array<{
+        id: number
+        name: string
+        email: string
+        message: string
+        created_at: string
+      }>
+      return reply.send({ messages })
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Failed to fetch contact messages' })
+    }
+  })
+
   // Get all users (admin only)
   fastify.get('/api/users', { preHandler: [requireAdmin] }, async (request, reply) => {
     try {

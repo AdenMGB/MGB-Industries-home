@@ -5,19 +5,11 @@ import { useAuth } from './composables/useAuth'
 import { cn } from './utils/cn'
 import MorphingNav from './components/MorphingNav.vue'
 import PageTransition from './components/PageTransition.vue'
+import Toast from './components/Toast.vue'
 import { RouterView } from 'vue-router'
 import { gsap } from 'gsap'
 
-const { themeMode } = useTheme()
 const { checkAuth } = useAuth()
-
-watch(() => themeMode.value, (mode) => {
-  if (mode === 'hacker') {
-    document.body.style.fontFamily = 'JetBrains Mono, monospace'
-  } else {
-    document.body.style.fontFamily = 'Inter, system-ui, sans-serif'
-  }
-}, { immediate: true })
 
 onMounted(() => {
   // Check authentication status in background (non-blocking)
@@ -44,7 +36,7 @@ onMounted(() => {
 <template>
   <div
     :class="cn(
-      'min-h-screen bg-cream overflow-x-hidden',
+      'min-h-screen bg-cream dark:bg-gray-950 overflow-x-hidden',
       'relative transition-colors duration-1000 ease-out',
     )"
   >
@@ -53,7 +45,7 @@ onMounted(() => {
       <div
         v-for="i in 12"
         :key="i"
-        class="bg-element absolute rounded-full bg-peach/20 blur-3xl transform-gpu"
+        class="bg-element absolute rounded-full bg-peach/20 dark:bg-lavender/10 blur-3xl transform-gpu"
         :style="{
           left: `${Math.random() * 100}%`,
           top: `${Math.random() * 100}%`,
@@ -70,6 +62,9 @@ onMounted(() => {
     <PageTransition>
       <RouterView />
     </PageTransition>
+
+    <!-- Toast notifications -->
+    <Toast />
   </div>
 </template>
 

@@ -17,6 +17,8 @@ import {
   LinkIcon,
   XMarkIcon,
   CheckIcon,
+  ChatBubbleLeftRightIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/vue/24/outline'
 import type { UserWithoutPassword } from '../../server/types/index.js'
 
@@ -29,6 +31,11 @@ const { user: currentUser, isAdmin, checkAuth } = useAuth()
 const users = ref<UserWithoutPassword[]>([])
 const isLoading = ref(true)
 const error = ref('')
+
+type ContactMessage = { id: number; name: string; email: string; message: string; created_at: string }
+const contactMessages = ref<ContactMessage[]>([])
+const contactLoading = ref(true)
+const contactError = ref('')
 
 // Modal states
 const isEditModalOpen = ref(false)
@@ -61,9 +68,10 @@ const userStats = computed(() => {
 })
 
 onMounted(async () => {
-  // Start loading users immediately (non-blocking)
+  // Start loading users and contact messages immediately (non-blocking)
   loadUsers()
-  
+  loadContactMessages()
+
   // Check auth in parallel
   await checkAuth()
   
@@ -118,7 +126,7 @@ onMounted(async () => {
 async function loadUsers() {
   isLoading.value = true
   error.value = ''
-  
+
   try {
     const response = await api.getUsers()
     if (response.error) {
@@ -131,6 +139,49 @@ async function loadUsers() {
   } finally {
     isLoading.value = false
   }
+}
+
+async function loadContactMessages() {
+  contactLoading.value = true
+  contactError.value = ''
+  try {
+    const response = await api.getContactMessages()
+    if (response.error) {
+      contactError.value = response.error
+    } else if (response.data) {
+      contactMessages.value = response.data.messages
+      await nextTick()
+      if (contactMessages.value.length > 0 && typeof window !== 'undefined') {
+        gsap.fromTo(
+          '[data-contact-card]',
+          { opacity: 0, y: 20, scale: 0.98 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.5,
+            stagger: 0.05,
+            ease: premiumEase,
+            scrollTrigger: {
+              trigger: '.contact-messages-list',
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          },
+        )
+        ScrollTrigger.refresh()
+      }
+    }
+  } catch (err) {
+    contactError.value = err instanceof Error ? err.message : 'Failed to load contact messages'
+  } finally {
+    contactLoading.value = false
+  }
+}
+
+function copyContactEmail(email: string) {
+  navigator.clipboard.writeText(email)
+  actionResult.value = { type: 'success', message: 'Email copied to clipboard!' }
 }
 
 function openEditModal(user: UserWithoutPassword) {
@@ -273,10 +324,10 @@ function copyToClipboard(text: string) {
     <div class="max-w-7xl mx-auto">
       <!-- Header -->
       <div class="page-header mb-12">
-        <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800">
+        <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
           Admin Dashboard
         </h1>
-        <p class="text-base text-gray-600">
+        <p class="text-base text-gray-600 dark:text-gray-400">
           Manage users and system settings
         </p>
       </div>
@@ -284,20 +335,20 @@ function copyToClipboard(text: string) {
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div
-          class="stat-card p-6 rounded-xl bg-white/40 backdrop-blur-md border border-gray-200/50"
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-peach/10 backdrop-blur-md border border-gray-200/50 dark:border-peach/20"
         >
           <div class="flex items-center gap-4">
             <div
               :class="cn(
                 'p-3 rounded-lg',
-                'bg-peach/20',
+                'bg-peach/20 dark:bg-peach/30',
               )"
             >
-              <UsersIcon class="w-8 h-8 text-gray-700" />
+              <UsersIcon class="w-8 h-8 text-gray-700 dark:text-peach" />
             </div>
             <div>
-              <p class="text-sm text-gray-500">Total Users</p>
-              <p class="text-3xl font-semibold text-gray-800">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Total Users</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">
                 {{ userStats.total }}
               </p>
             </div>
@@ -305,20 +356,20 @@ function copyToClipboard(text: string) {
         </div>
 
         <div
-          class="stat-card p-6 rounded-xl bg-white/40 backdrop-blur-md border border-gray-200/50"
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-lavender/10 backdrop-blur-md border border-gray-200/50 dark:border-lavender/20"
         >
           <div class="flex items-center gap-4">
             <div
               :class="cn(
                 'p-3 rounded-lg',
-                'bg-lavender/20',
+                'bg-lavender/20 dark:bg-lavender/30',
               )"
             >
-              <ShieldCheckIcon class="w-8 h-8 text-gray-700" />
+              <ShieldCheckIcon class="w-8 h-8 text-gray-700 dark:text-lavender" />
             </div>
             <div>
-              <p class="text-sm text-gray-500">Admins</p>
-              <p class="text-3xl font-semibold text-gray-800">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Admins</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">
                 {{ userStats.admins }}
               </p>
             </div>
@@ -326,20 +377,20 @@ function copyToClipboard(text: string) {
         </div>
 
         <div
-          class="stat-card p-6 rounded-xl bg-white/40 backdrop-blur-md border border-gray-200/50"
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-mint/10 backdrop-blur-md border border-gray-200/50 dark:border-mint/20"
         >
           <div class="flex items-center gap-4">
             <div
               :class="cn(
                 'p-3 rounded-lg',
-                'bg-mint/20',
+                'bg-mint/20 dark:bg-mint/30',
               )"
             >
-              <UserIcon class="w-8 h-8 text-gray-700" />
+              <UserIcon class="w-8 h-8 text-gray-700 dark:text-mint" />
             </div>
             <div>
-              <p class="text-sm text-gray-500">Regular Users</p>
-              <p class="text-3xl font-semibold text-gray-800">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Regular Users</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">
                 {{ userStats.regularUsers }}
               </p>
             </div>
@@ -347,17 +398,92 @@ function copyToClipboard(text: string) {
         </div>
       </div>
 
+      <!-- Contact Messages -->
+      <div class="card p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 mb-8">
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-white">Contact Messages</h2>
+
+        <div
+          v-if="contactError"
+          :class="cn(
+            'p-4 rounded-lg mb-6',
+            'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50',
+            'text-red-700 dark:text-red-400 text-sm',
+          )"
+        >
+          {{ contactError }}
+        </div>
+
+        <div v-if="contactLoading" class="text-center py-12">
+          <p class="text-gray-600 dark:text-gray-400">Loading contact messages...</p>
+        </div>
+
+        <div
+          v-else
+          class="contact-messages-list space-y-4"
+        >
+          <div
+            v-for="msg in contactMessages"
+            :key="msg.id"
+            data-contact-card
+            :class="cn(
+              'p-4 rounded-lg',
+              'bg-white/60 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50',
+              'hover:bg-white/80 dark:hover:bg-gray-700/70 transition-all duration-200',
+            )"
+          >
+            <div class="flex items-start gap-3">
+              <div class="p-2 rounded-lg bg-lavender/20 dark:bg-lavender/30">
+                <ChatBubbleLeftRightIcon class="w-5 h-5 text-gray-700 dark:text-lavender" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <p class="font-medium text-gray-800 dark:text-white">{{ msg.name }}</p>
+                  <button
+                    @click="copyContactEmail(msg.email)"
+                    :class="cn(
+                      'p-1.5 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-600/50',
+                      'transition-all duration-200 transform-gpu hover:scale-105 active:scale-95',
+                    )"
+                    title="Copy email"
+                  >
+                    <ClipboardDocumentIcon class="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+                <a
+                  :href="`mailto:${msg.email}`"
+                  class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-lavender dark:hover:text-lavender transition-colors duration-200"
+                >
+                  <EnvelopeIcon class="w-4 h-4 shrink-0" />
+                  <span class="truncate">{{ msg.email }}</span>
+                </a>
+                <p class="text-sm text-gray-700 dark:text-gray-300 mt-2 whitespace-pre-wrap">{{ msg.message }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                  {{ new Date(msg.created_at).toLocaleString() }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="!contactLoading && contactMessages.length === 0"
+          class="text-center py-12"
+        >
+          <p class="text-gray-600 dark:text-gray-400">No contact messages yet</p>
+        </div>
+      </div>
+
       <!-- Users List -->
-      <div class="card p-6 md:p-8 rounded-xl bg-white/40 backdrop-blur-md border border-gray-200/50">
-        <h2 class="text-2xl font-semibold mb-6 text-gray-800">All Users</h2>
+      <div class="card p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-white">All Users</h2>
 
         <!-- Error State -->
         <div
           v-if="error"
           :class="cn(
             'p-4 rounded-lg mb-6',
-            'bg-red-50 border border-red-200',
-            'text-red-700 text-sm',
+            'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50',
+            'text-red-700 dark:text-red-400 text-sm',
           )"
         >
           {{ error }}
@@ -365,7 +491,7 @@ function copyToClipboard(text: string) {
 
         <!-- Loading State -->
         <div v-if="isLoading" class="text-center py-12">
-          <p class="text-gray-600">Loading users...</p>
+          <p class="text-gray-600 dark:text-gray-400">Loading users...</p>
         </div>
 
         <!-- Users Grid -->
@@ -379,8 +505,8 @@ function copyToClipboard(text: string) {
             data-user-card
             :class="cn(
               'p-4 rounded-lg relative group',
-              'bg-white/60 border border-gray-200/50',
-              'hover:bg-white/80 transition-all duration-300',
+              'bg-white/60 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50',
+              'hover:bg-white/80 dark:hover:bg-gray-700/70 transition-all duration-300',
               u.id === currentUser?.id && 'ring-2 ring-peach/50',
             )"
           >
@@ -388,41 +514,41 @@ function copyToClipboard(text: string) {
               <div
                 :class="cn(
                   'p-2 rounded-lg',
-                  u.role === 'admin' ? 'bg-peach/20' : 'bg-mint/20',
+                  u.role === 'admin' ? 'bg-peach/20 dark:bg-peach/30' : 'bg-mint/20 dark:bg-mint/30',
                 )"
               >
-                <UserIcon class="w-5 h-5 text-gray-700" />
+                <UserIcon class="w-5 h-5 text-gray-700 dark:text-gray-300" />
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                  <p class="font-medium text-gray-800 truncate">{{ u.name }}</p>
+                  <p class="font-medium text-gray-800 dark:text-white truncate">{{ u.name }}</p>
                   <span
                     v-if="u.role === 'admin'"
                     :class="cn(
                       'px-2 py-0.5 text-xs font-medium rounded-md',
-                      'bg-peach/30 text-gray-800',
+                      'bg-peach/30 dark:bg-peach/40 text-gray-800 dark:text-white',
                     )"
                   >
                     Admin
                   </span>
                 </div>
-                <div class="flex items-center gap-2 text-sm text-gray-600">
+                <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <EnvelopeIcon class="w-4 h-4" />
                   <span class="truncate">{{ u.email }}</span>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
                   Joined {{ new Date(u.created_at).toLocaleDateString() }}
                 </p>
               </div>
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200/50">
+            <div class="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-600/50">
               <button
                 @click="openEditModal(u)"
                 :class="cn(
                   'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm',
-                  'bg-peach/20 hover:bg-peach/30 text-gray-700',
+                  'bg-peach/20 hover:bg-peach/30 dark:bg-peach/20 dark:hover:bg-peach/30 text-gray-700 dark:text-gray-200',
                   'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 )"
                 title="Edit User"
@@ -434,7 +560,7 @@ function copyToClipboard(text: string) {
                 @click="openResetPasswordModal(u)"
                 :class="cn(
                   'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm',
-                  'bg-lavender/20 hover:bg-lavender/30 text-gray-700',
+                  'bg-lavender/20 hover:bg-lavender/30 dark:bg-lavender/20 dark:hover:bg-lavender/30 text-gray-700 dark:text-gray-200',
                   'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 )"
                 title="Reset Password"
@@ -446,7 +572,7 @@ function copyToClipboard(text: string) {
                 @click="openResetLinkModal(u)"
                 :class="cn(
                   'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm',
-                  'bg-mint/20 hover:bg-mint/30 text-gray-700',
+                  'bg-mint/20 hover:bg-mint/30 dark:bg-mint/20 dark:hover:bg-mint/30 text-gray-700 dark:text-gray-200',
                   'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 )"
                 title="Generate Reset Link"
@@ -459,7 +585,7 @@ function copyToClipboard(text: string) {
                 @click="openDeleteModal(u)"
                 :class="cn(
                   'flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm',
-                  'bg-red-50 hover:bg-red-100 text-red-700',
+                  'bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400',
                   'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 )"
                 title="Delete User"
@@ -475,7 +601,7 @@ function copyToClipboard(text: string) {
           v-if="!isLoading && users.length === 0"
           class="text-center py-12"
         >
-          <p class="text-gray-600">No users found</p>
+          <p class="text-gray-600 dark:text-gray-400">No users found</p>
         </div>
       </div>
     </div>
@@ -491,44 +617,44 @@ function copyToClipboard(text: string) {
         @click="closeModals"
       />
       <div
-        class="relative w-full max-w-md rounded-xl bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-xl p-6"
+        class="relative w-full max-w-md rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-xl p-6"
       >
         <div class="flex items-center justify-between mb-6">
-          <h3 class="text-2xl font-semibold text-gray-800">Edit User</h3>
+          <h3 class="text-2xl font-semibold text-gray-800 dark:text-white">Edit User</h3>
           <button
             @click="closeModals"
-            class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <XMarkIcon class="w-5 h-5 text-gray-600" />
+            <XMarkIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
         <form @submit.prevent="handleUpdateUser" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name</label>
             <input
               v-model="editForm.name"
               type="text"
               required
-              class="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-peach/50"
+              class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-peach/50"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
             <input
               v-model="editForm.email"
               type="email"
               required
-              class="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-peach/50"
+              class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-peach/50"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
             <select
               v-model="editForm.role"
-              class="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-peach/50"
+              class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-peach/50"
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
@@ -539,7 +665,7 @@ function copyToClipboard(text: string) {
             v-if="actionResult"
             :class="cn(
               'p-3 rounded-lg text-sm',
-              actionResult.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+              actionResult.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400',
             )"
           >
             {{ actionResult.message }}
@@ -550,7 +676,7 @@ function copyToClipboard(text: string) {
               type="submit"
               :class="cn(
                 'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
-                'bg-peach/30 hover:bg-peach/40 text-gray-800',
+                'bg-peach/30 hover:bg-peach/40 dark:bg-peach/30 dark:hover:bg-peach/40 text-gray-800 dark:text-white',
                 'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
               )"
             >
@@ -559,7 +685,7 @@ function copyToClipboard(text: string) {
             <button
               type="button"
               @click="closeModals"
-              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
             >
               Cancel
             </button>
@@ -579,46 +705,46 @@ function copyToClipboard(text: string) {
         @click="closeModals"
       />
       <div
-        class="relative w-full max-w-md rounded-xl bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-xl p-6"
+        class="relative w-full max-w-md rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-xl p-6"
       >
         <div class="flex items-center justify-between mb-6">
-          <h3 class="text-2xl font-semibold text-gray-800">Reset Password</h3>
+          <h3 class="text-2xl font-semibold text-gray-800 dark:text-white">Reset Password</h3>
           <button
             @click="closeModals"
-            class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <XMarkIcon class="w-5 h-5 text-gray-600" />
+            <XMarkIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
         <div class="space-y-4">
-          <p class="text-gray-600">
+          <p class="text-gray-600 dark:text-gray-400">
             Reset password for <strong>{{ selectedUser?.name }}</strong> ({{ selectedUser?.email }})?
             A temporary password will be generated.
           </p>
 
           <div
             v-if="actionResult?.type === 'success' && actionResult.data?.temporaryPassword"
-            class="p-4 rounded-lg bg-green-50 border border-green-200"
+            class="p-4 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800/50"
           >
-            <p class="text-sm font-medium text-green-800 mb-2">Temporary Password:</p>
+            <p class="text-sm font-medium text-green-800 dark:text-green-400 mb-2">Temporary Password:</p>
             <div class="flex items-center gap-2">
-              <code class="flex-1 px-3 py-2 bg-white rounded border border-green-200 text-green-900 font-mono text-sm">
+              <code class="flex-1 px-3 py-2 bg-white dark:bg-gray-800 rounded border border-green-200 dark:border-green-800 text-green-900 dark:text-green-300 font-mono text-sm">
                 {{ actionResult.data.temporaryPassword }}
               </code>
               <button
                 @click="copyToClipboard(actionResult.data.temporaryPassword)"
-                class="px-3 py-2 bg-green-100 hover:bg-green-200 rounded text-green-800 transition-colors"
+                class="px-3 py-2 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800/50 rounded text-green-800 dark:text-green-400 transition-colors"
               >
                 Copy
               </button>
             </div>
-            <p class="text-xs text-green-700 mt-2">Share this password with the user securely.</p>
+            <p class="text-xs text-green-700 dark:text-green-500 mt-2">Share this password with the user securely.</p>
           </div>
 
           <div
             v-if="actionResult?.type === 'error'"
-            class="p-3 rounded-lg bg-red-50 text-red-700 text-sm"
+            class="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm"
           >
             {{ actionResult.message }}
           </div>
@@ -629,7 +755,7 @@ function copyToClipboard(text: string) {
               :disabled="actionResult?.type === 'success'"
               :class="cn(
                 'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
-                'bg-lavender/30 hover:bg-lavender/40 text-gray-800',
+                'bg-lavender/30 hover:bg-lavender/40 dark:bg-lavender/30 dark:hover:bg-lavender/40 text-gray-800 dark:text-white',
                 'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )"
@@ -638,7 +764,7 @@ function copyToClipboard(text: string) {
             </button>
             <button
               @click="closeModals"
-              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
             >
               Close
             </button>
@@ -658,48 +784,48 @@ function copyToClipboard(text: string) {
         @click="closeModals"
       />
       <div
-        class="relative w-full max-w-md rounded-xl bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-xl p-6"
+        class="relative w-full max-w-md rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-xl p-6"
       >
         <div class="flex items-center justify-between mb-6">
-          <h3 class="text-2xl font-semibold text-gray-800">Generate Reset Link</h3>
+          <h3 class="text-2xl font-semibold text-gray-800 dark:text-white">Generate Reset Link</h3>
           <button
             @click="closeModals"
-            class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <XMarkIcon class="w-5 h-5 text-gray-600" />
+            <XMarkIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
         <div class="space-y-4">
-          <p class="text-gray-600">
+          <p class="text-gray-600 dark:text-gray-400">
             Generate a password reset link for <strong>{{ selectedUser?.name }}</strong> ({{ selectedUser?.email }})?
             The link will expire in 24 hours.
           </p>
 
           <div
             v-if="actionResult?.type === 'success' && actionResult.data?.resetLink"
-            class="p-4 rounded-lg bg-green-50 border border-green-200"
+            class="p-4 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800/50"
           >
-            <p class="text-sm font-medium text-green-800 mb-2">Reset Link:</p>
+            <p class="text-sm font-medium text-green-800 dark:text-green-400 mb-2">Reset Link:</p>
             <div class="flex items-center gap-2">
-              <code class="flex-1 px-3 py-2 bg-white rounded border border-green-200 text-green-900 text-xs break-all">
+              <code class="flex-1 px-3 py-2 bg-white dark:bg-gray-800 rounded border border-green-200 dark:border-green-800 text-green-900 dark:text-green-300 text-xs break-all">
                 {{ actionResult.data.resetLink }}
               </code>
               <button
                 @click="copyToClipboard(actionResult.data.resetLink)"
-                class="px-3 py-2 bg-green-100 hover:bg-green-200 rounded text-green-800 transition-colors"
+                class="px-3 py-2 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800/50 rounded text-green-800 dark:text-green-400 transition-colors"
               >
                 Copy
               </button>
             </div>
-            <p class="text-xs text-green-700 mt-2">
+            <p class="text-xs text-green-700 dark:text-green-500 mt-2">
               Expires: {{ new Date(actionResult.data.expiresAt).toLocaleString() }}
             </p>
           </div>
 
           <div
             v-if="actionResult?.type === 'error'"
-            class="p-3 rounded-lg bg-red-50 text-red-700 text-sm"
+            class="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm"
           >
             {{ actionResult.message }}
           </div>
@@ -710,7 +836,7 @@ function copyToClipboard(text: string) {
               :disabled="actionResult?.type === 'success'"
               :class="cn(
                 'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
-                'bg-mint/30 hover:bg-mint/40 text-gray-800',
+                'bg-mint/30 hover:bg-mint/40 dark:bg-mint/30 dark:hover:bg-mint/40 text-gray-800 dark:text-white',
                 'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )"
@@ -719,7 +845,7 @@ function copyToClipboard(text: string) {
             </button>
             <button
               @click="closeModals"
-              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
             >
               Close
             </button>
@@ -739,20 +865,20 @@ function copyToClipboard(text: string) {
         @click="closeModals"
       />
       <div
-        class="relative w-full max-w-md rounded-xl bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-xl p-6"
+        class="relative w-full max-w-md rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-xl p-6"
       >
         <div class="flex items-center justify-between mb-6">
-          <h3 class="text-2xl font-semibold text-gray-800">Delete User</h3>
+          <h3 class="text-2xl font-semibold text-gray-800 dark:text-white">Delete User</h3>
           <button
             @click="closeModals"
-            class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <XMarkIcon class="w-5 h-5 text-gray-600" />
+            <XMarkIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
         <div class="space-y-4">
-          <p class="text-gray-600">
+          <p class="text-gray-600 dark:text-gray-400">
             Are you sure you want to delete <strong>{{ selectedUser?.name }}</strong> ({{ selectedUser?.email }})?
             This action cannot be undone.
           </p>
@@ -761,7 +887,7 @@ function copyToClipboard(text: string) {
             v-if="actionResult"
             :class="cn(
               'p-3 rounded-lg text-sm',
-              actionResult.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+              actionResult.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400',
             )"
           >
             {{ actionResult.message }}
@@ -773,7 +899,7 @@ function copyToClipboard(text: string) {
               :disabled="actionResult?.type === 'success'"
               :class="cn(
                 'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
-                'bg-red-100 hover:bg-red-200 text-red-700',
+                'bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400',
                 'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )"
@@ -782,7 +908,7 @@ function copyToClipboard(text: string) {
             </button>
             <button
               @click="closeModals"
-              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
             >
               Cancel
             </button>

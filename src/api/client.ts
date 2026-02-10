@@ -154,4 +154,34 @@ export const api = {
   async getGameHistory() {
     return request<{ history: Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }> }>('/game-history')
   },
+
+  async getGameFavorites() {
+    return request<{ favorites: Array<{ game_id: string; game_name: string; game_href: string; created_at: string }> }>('/game-favorites')
+  },
+
+  async addGameFavorite(gameId: string, gameName: string, gameHref: string) {
+    return request<{ message: string }>('/game-favorites', {
+      method: 'POST',
+      body: JSON.stringify({ gameId, gameName, gameHref }),
+    })
+  },
+
+  async removeGameFavorite(gameId: string) {
+    return request<{ message: string }>(`/game-favorites/${gameId}`, {
+      method: 'DELETE',
+    })
+  },
+
+  async sendContactMessage(data: { name: string; email: string; message: string }) {
+    return request<{ message: string }>('/contact', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async getContactMessages() {
+    return request<{
+      messages: Array<{ id: number; name: string; email: string; message: string; created_at: string }>
+    }>('/admin/contact-messages')
+  },
 }

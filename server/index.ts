@@ -9,6 +9,8 @@ import { authRoutes } from './routes/auth.js'
 import { userRoutes } from './routes/users.js'
 import { gameSaveRoutes } from './routes/gameSaves.js'
 import { gameListRoutes } from './routes/games.js'
+import { contactRoutes } from './routes/contact.js'
+import { seoRoutes } from './routes/seo.js'
 
 export async function createServer() {
   const fastify = Fastify({
@@ -42,6 +44,8 @@ export async function createServer() {
   await fastify.register(userRoutes)
   await fastify.register(gameSaveRoutes)
   await fastify.register(gameListRoutes)
+  await fastify.register(contactRoutes)
+  await fastify.register(seoRoutes)
 
   return fastify
 }

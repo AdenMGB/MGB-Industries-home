@@ -114,10 +114,10 @@ onMounted(async () => {
       <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="mb-8">
-          <h2 class="text-3xl md:text-5xl font-light text-gray-800 mb-4">About AdenMGB</h2>
+          <h2 class="text-3xl md:text-5xl font-light text-gray-800 dark:text-white mb-4">About AdenMGB</h2>
           <!-- Cycling font bio -->
           <p
-            class="text-lg md:text-xl text-gray-600 transition-all duration-500"
+            class="text-lg md:text-xl text-gray-600 dark:text-gray-300 transition-all duration-500"
             :style="{ fontFamily: fonts[currentFontIndex] }"
           >
             gurt
@@ -132,12 +132,12 @@ onMounted(async () => {
         <!-- Split layout -->
         <div class="grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 class="text-4xl md:text-6xl font-light mb-6 text-gray-800">
+            <h2 class="text-4xl md:text-6xl font-light mb-6 text-gray-800 dark:text-white">
               Ready to See My Work?
             </h2>
           </div>
           <div class="space-y-4">
-            <p class="text-lg text-gray-600 mb-8">Check out my projects or learn more about me</p>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mb-8">Check out my projects or learn more about me</p>
             <div class="flex flex-col gap-3">
               <button
                 @click="router.push('/projects')"
@@ -174,6 +174,16 @@ onMounted(async () => {
     backdrop-filter 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:global(.dark) .smooth-bg-section-1 {
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 15, 0) 0%,
+    rgba(31, 41, 55, 0.5) 30%,
+    rgba(55, 65, 81, 0.4) 70%,
+    rgba(75, 85, 99, 0.3) 100%
+  );
+}
+
 .smooth-bg-section-2 {
   background: linear-gradient(
     to bottom,
@@ -185,5 +195,14 @@ onMounted(async () => {
   transition:
     background 1s cubic-bezier(0.4, 0, 0.2, 1),
     backdrop-filter 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:global(.dark) .smooth-bg-section-2 {
+  background: linear-gradient(
+    to bottom,
+    rgba(75, 85, 99, 0.3) 0%,
+    rgba(55, 65, 81, 0.5) 50%,
+    rgba(31, 41, 55, 0.4) 100%
+  );
 }
 </style>

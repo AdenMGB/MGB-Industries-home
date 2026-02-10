@@ -3,7 +3,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { cn } from '@/utils/cn'
-import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, FolderIcon, GlobeAltIcon, CodeBracketSquareIcon } from '@heroicons/vue/24/outline'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
@@ -71,6 +71,12 @@ const filteredProjects = computed(() => {
   return filtered
 })
 
+const projectStats = computed(() => ({
+  desktop: projects.filter(p => p.tags.includes('Desktop')).length,
+  web: projects.filter(p => p.tags.includes('Web')).length,
+  openSource: projects.filter(p => p.tags.includes('Open Source')).length,
+}))
+
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 onMounted(async () => {
@@ -78,6 +84,7 @@ onMounted(async () => {
   
   // Set initial states to prevent flash
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
+  gsap.set('.stat-card', { opacity: 0, y: 20, scale: 0.98 })
   gsap.set('.search-container', { opacity: 0, x: -30, scale: 0.95 })
   gsap.set('.filter-tag', { opacity: 0, scale: 0.8, x: 20 })
   gsap.set('[data-project-card]', { opacity: 0, y: 40, scale: 0.95 })
@@ -91,6 +98,15 @@ onMounted(async () => {
     y: 0,
     scale: 1,
     duration: 0.6,
+  }, 0)
+  
+  tl.to('.stat-card', {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    duration: 0.5,
+    stagger: 0.1,
+    delay: 0.1,
   }, 0)
   
   tl.to('.search-container', {
@@ -131,17 +147,56 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen py-24 px-4 md:px-8">
     <div class="max-w-7xl mx-auto">
-      <!-- Asymmetric header layout -->
-      <div class="page-header mb-20 grid md:grid-cols-12 gap-8 items-end">
-        <div class="md:col-span-8">
-          <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800">
-            Projects
-          </h1>
+      <!-- Header (Admin-style typography) -->
+      <div class="page-header mb-12">
+        <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
+          Projects
+        </h1>
+        <p class="text-base text-gray-600 dark:text-gray-400">
+          A collection of work spanning desktop applications, web platforms, and open-source contributions.
+        </p>
+      </div>
+
+      <!-- Stats Cards (Admin-style pastel) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-peach/10 backdrop-blur-md border border-gray-200/50 dark:border-peach/20"
+        >
+          <div class="flex items-center gap-4">
+            <div class="p-3 rounded-lg bg-peach/20 dark:bg-peach/30">
+              <FolderIcon class="w-8 h-8 text-gray-700 dark:text-peach" />
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Desktop</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">{{ projectStats.desktop }}</p>
+            </div>
+          </div>
         </div>
-        <div class="md:col-span-4">
-          <p class="text-base text-gray-600">
-            A collection of work spanning desktop applications, web platforms, and open-source contributions.
-          </p>
+        <div
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-lavender/10 backdrop-blur-md border border-gray-200/50 dark:border-lavender/20"
+        >
+          <div class="flex items-center gap-4">
+            <div class="p-3 rounded-lg bg-lavender/20 dark:bg-lavender/30">
+              <GlobeAltIcon class="w-8 h-8 text-gray-700 dark:text-lavender" />
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Web</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">{{ projectStats.web }}</p>
+            </div>
+          </div>
+        </div>
+        <div
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-mint/10 backdrop-blur-md border border-gray-200/50 dark:border-mint/20"
+        >
+          <div class="flex items-center gap-4">
+            <div class="p-3 rounded-lg bg-mint/20 dark:bg-mint/30">
+              <CodeBracketSquareIcon class="w-8 h-8 text-gray-700 dark:text-mint" />
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Open Source</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">{{ projectStats.openSource }}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -152,9 +207,9 @@ onMounted(async () => {
           <div
             :class="cn(
               'relative w-full',
-              'bg-white/40 backdrop-blur-md rounded-xl',
-              'border border-gray-200/50',
-              'transition-all duration-300 hover:bg-white/50',
+              'bg-white/40 dark:bg-gray-800/60 backdrop-blur-md rounded-xl',
+              'border border-gray-200/50 dark:border-gray-600/50',
+              'transition-all duration-300 hover:bg-white/50 dark:hover:bg-gray-700/60',
             )"
           >
             <MagnifyingGlassIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -164,7 +219,7 @@ onMounted(async () => {
               placeholder="Search projects..."
               :class="cn(
                 'w-full pl-12 pr-4 py-3 bg-transparent',
-                'text-gray-700 placeholder-gray-400',
+                'text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500',
                 'focus:outline-none rounded-xl',
               )"
             />
@@ -179,8 +234,8 @@ onMounted(async () => {
             :class="cn(
               'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
               selectedFilter === null
-                ? 'bg-peach/30 text-gray-800 scale-105'
-                : 'bg-white/40 text-gray-600 hover:bg-white/60 hover:scale-105',
+                ? 'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white scale-105'
+                : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
             )"
           >
             All
@@ -193,8 +248,8 @@ onMounted(async () => {
             :class="cn(
               'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
               selectedFilter === category
-                ? 'bg-lavender/30 text-gray-800 scale-105'
-                : 'bg-white/40 text-gray-600 hover:bg-white/60 hover:scale-105',
+                ? 'bg-lavender/30 dark:bg-lavender/30 text-gray-800 dark:text-white scale-105'
+                : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
             )"
           >
             {{ category }}
@@ -220,19 +275,30 @@ onMounted(async () => {
           <div
             :class="cn(
               'h-full p-6 md:p-8 rounded-xl',
-              'bg-white/40 backdrop-blur-md',
-              'border border-gray-200/50',
-              'hover:bg-white/60 transition-all duration-300',
+              'bg-white/40 dark:bg-gray-800/80 backdrop-blur-md',
+              'border border-gray-200/50 dark:border-gray-700/50',
+              'hover:bg-white/60 dark:hover:bg-gray-700/80 transition-all duration-300',
               'group cursor-pointer',
             )"
           >
             <div class="flex flex-col h-full">
-              <h3 class="text-xl md:text-2xl font-semibold mb-3 text-gray-800 group-hover:text-coral transition-colors duration-300">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="p-2 rounded-lg bg-peach/20 dark:bg-peach/30">
+                  <FolderIcon class="w-5 h-5 text-gray-700 dark:text-peach" />
+                </div>
+                <span
+                  v-if="project.year"
+                  class="text-xs font-medium text-gray-500 dark:text-gray-400"
+                >
+                  {{ project.year }}
+                </span>
+              </div>
+              <h3 class="text-xl md:text-2xl font-semibold mb-3 text-gray-800 dark:text-white group-hover:text-coral transition-colors duration-300">
                 {{ project.title }}
               </h3>
               <p 
                 :class="cn(
-                  'text-sm md:text-base text-gray-600 mb-4 leading-relaxed flex-1',
+                  'text-sm md:text-base text-gray-600 dark:text-gray-300 mb-4 leading-relaxed flex-1',
                   index === 0 && 'text-base md:text-lg',
                 )"
               >
@@ -244,7 +310,7 @@ onMounted(async () => {
                   :key="tag"
                   :class="cn(
                     'px-2.5 py-1 text-xs font-normal rounded-md',
-                    'bg-mint/20 text-gray-600 border border-mint/30',
+                    'bg-mint/20 dark:bg-mint/20 text-gray-600 dark:text-gray-300 border border-mint/30 dark:border-mint/40',
                     'transition-all duration-300 group-hover:bg-mint/30',
                   )"
                 >
@@ -258,7 +324,7 @@ onMounted(async () => {
                 rel="noopener noreferrer"
                 :class="cn(
                   'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal',
-                  'bg-peach/20 text-gray-700 hover:bg-peach/30',
+                  'bg-peach/20 dark:bg-peach/20 text-gray-700 dark:text-gray-200 hover:bg-peach/30 dark:hover:bg-peach/30',
                   'transition-all duration-300 group-hover:translate-x-1',
                 )"
               >
@@ -277,10 +343,10 @@ onMounted(async () => {
         v-else
         :class="cn(
           'text-center py-24 rounded-xl',
-          'bg-white/40 backdrop-blur-sm border border-gray-200/50',
+          'bg-white/40 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50',
         )"
       >
-        <p class="text-gray-600">
+        <p class="text-gray-600 dark:text-gray-400">
           No projects found
         </p>
       </div>
@@ -289,6 +355,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.stat-card {
+  transform-origin: center center;
+}
+
 .filter-tag {
   transform-origin: center center;
 }

@@ -18,42 +18,45 @@ const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 onMounted(() => {
   // Advanced multi-property animation for title
-  gsap.fromTo('.hero-title',
-    { 
-      opacity: 0, 
+  gsap.fromTo(
+    '.hero-title',
+    {
+      opacity: 0,
       y: 40,
       scale: 0.96,
       filter: 'blur(10px)',
     },
-    { 
-      opacity: 1, 
+    {
+      opacity: 1,
       y: 0,
       scale: 1,
       filter: 'blur(0px)',
       duration: 0.8,
       ease: premiumEase,
-    }
+    },
   )
 
   // Staggered subtitle with rotation
-  gsap.fromTo('.hero-subtitle',
-    { 
-      opacity: 0, 
+  gsap.fromTo(
+    '.hero-subtitle',
+    {
+      opacity: 0,
       y: 30,
       rotationX: -15,
     },
-    { 
-      opacity: 1, 
+    {
+      opacity: 1,
       y: 0,
       rotationX: 0,
       duration: 0.6,
       delay: 0.15,
       ease: premiumEase,
-    }
+    },
   )
 
   // Description with clip-path reveal
-  gsap.fromTo('.hero-description',
+  gsap.fromTo(
+    '.hero-description',
     {
       opacity: 0,
       clipPath: 'inset(0 100% 0 0)',
@@ -64,15 +67,16 @@ onMounted(() => {
       duration: 0.7,
       delay: 0.3,
       ease: premiumEase,
-    }
+    },
   )
 
   // Advanced tech icons with scale + rotation + stagger
   // Same animation for CTA buttons
   const allAnimatedElements = document.querySelectorAll('.tech-icon, .cta-button')
-  gsap.fromTo(allAnimatedElements,
-    { 
-      opacity: 0, 
+  gsap.fromTo(
+    allAnimatedElements,
+    {
+      opacity: 0,
       y: 20,
       scale: 0.8,
       rotation: -5,
@@ -86,7 +90,7 @@ onMounted(() => {
       stagger: 0.1,
       ease: premiumEase,
       delay: 0.5,
-    }
+    },
   )
 
   // Continuous subtle float animation for tech icons
@@ -104,22 +108,31 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="relative min-h-screen flex items-center justify-center px-4 md:px-8 overflow-hidden bg-cream">
+  <section
+    class="relative min-h-screen flex items-center justify-center px-4 md:px-8 overflow-hidden bg-cream dark:bg-gray-950"
+  >
     <!-- Animated gradient background with blur -->
-    <div class="absolute inset-0 bg-gradient-to-br from-cream via-mint/5 to-lavender/5 backdrop-blur-2xl transition-all duration-1000" />
+    <div
+      class="absolute inset-0 bg-gradient-to-br from-cream via-mint/5 to-lavender/5 dark:from-gray-950 dark:via-gray-900/50 dark:to-gray-900/50 backdrop-blur-2xl transition-all duration-1000"
+    />
 
     <!-- Asymmetric layout container -->
     <div class="relative z-10 max-w-7xl mx-auto w-full">
       <div class="grid md:grid-cols-12 gap-8 items-center">
         <!-- Left side - Title (spans 7 cols) -->
         <div class="md:col-span-7 space-y-6">
-          <h1 class="hero-title text-6xl md:text-8xl lg:text-[10rem] font-light tracking-tight text-gray-800 leading-none">
+          <h1
+            class="hero-title text-6xl md:text-8xl lg:text-[10rem] font-light tracking-tight text-gray-800 dark:text-white leading-none"
+          >
             AdenMGB
           </h1>
-          <h2 class="hero-subtitle text-2xl md:text-3xl font-light text-gray-600 transform-gpu" style="transform-style: preserve-3d;">
+          <h2
+            class="hero-subtitle text-2xl md:text-3xl font-light text-gray-600 dark:text-gray-300 transform-gpu"
+            style="transform-style: preserve-3d"
+          >
             Open Source Developer
           </h2>
-          <p class="hero-description text-lg md:text-xl text-gray-500 max-w-xl">
+          <p class="hero-description text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-xl">
             Creative Technologist • Building beautiful, performant applications
           </p>
         </div>
@@ -128,21 +141,19 @@ onMounted(() => {
         <div class="md:col-span-5 space-y-4">
           <!-- Equal-sized 2x2 grid for tech icons -->
           <div class="grid grid-cols-2 gap-3">
-            <div
-              v-for="(tech, index) in techIcons"
-              :key="index"
-              class="tech-icon"
-            >
+            <div v-for="(tech, index) in techIcons" :key="index" class="tech-icon">
               <div
-                :class="cn(
-                  'px-5 py-3 rounded-xl',
-                  'bg-white/50 backdrop-blur-md',
-                  'border border-gray-200/40',
-                  'text-gray-700 font-normal text-sm',
-                  'flex items-center gap-2',
-                  'hover:bg-white/70 transition-all duration-300',
-                  'shadow-sm hover:shadow-md',
-                )"
+                :class="
+                  cn(
+                    'px-5 py-3 rounded-xl',
+                    'bg-white/50 dark:bg-gray-800/80 backdrop-blur-md',
+                    'border border-gray-200/40 dark:border-gray-600/50',
+                    'text-gray-700 dark:text-gray-200 font-normal text-sm',
+                    'flex items-center gap-2',
+                    'hover:bg-white/70 dark:hover:bg-gray-700/80 transition-all duration-300',
+                    'shadow-sm hover:shadow-md',
+                  )
+                "
               >
                 <component :is="tech.icon" class="w-4 h-4" />
                 <span>{{ tech.label }}</span>
@@ -152,7 +163,7 @@ onMounted(() => {
 
           <!-- CTA buttons in vertical stack with same animation -->
           <div class="flex flex-col gap-3 pt-4">
-            <button 
+            <button
               @click="router.push('/projects')"
               class="cta-button px-6 py-3 rounded-lg font-normal text-white transition-all duration-300 hover:opacity-90 bg-peach shadow-md hover:shadow-lg"
             >
@@ -173,7 +184,7 @@ onMounted(() => {
 
     <!-- Scroll indicator with pulse animation -->
     <div class="absolute bottom-8 left-1/2 -translate-x-1/2">
-      <div class="text-gray-400 text-xs font-light animate-pulse">Scroll</div>
+      <div class="text-gray-400 dark:text-gray-500 text-xs font-light animate-pulse">Scroll</div>
     </div>
   </section>
 </template>

@@ -88,6 +88,22 @@ RUN printf 'server {\n\
         alias /app/data/games/;\n\
     }\n\
     \n\
+    # SEO: sitemap and robots (proxied to Node.js)\n\
+    location = /sitemap.xml {\n\
+        proxy_pass http://localhost:3001;\n\
+        proxy_set_header Host $host;\n\
+        proxy_set_header X-Real-IP $remote_addr;\n\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+        proxy_set_header X-Forwarded-Proto $scheme;\n\
+    }\n\
+    location = /robots.txt {\n\
+        proxy_pass http://localhost:3001;\n\
+        proxy_set_header Host $host;\n\
+        proxy_set_header X-Real-IP $remote_addr;\n\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+        proxy_set_header X-Forwarded-Proto $scheme;\n\
+    }\n\
+    \n\
     # SPA routing\n\
     location / {\n\
         try_files $uri $uri/ /index.html;\n\

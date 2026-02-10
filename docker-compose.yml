@@ -10,6 +10,7 @@ services:
     environment:
       - NODE_ENV=production
       - JWT_SECRET=${JWT_SECRET:-change-me-use-a-secure-random-string}
+      - SITE_URL=${SITE_URL:-https://adenmgb.com}
     volumes:
       - ./data:/app/data
     healthcheck:

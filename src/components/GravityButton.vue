@@ -62,7 +62,7 @@ const handleMouseMove = (e: MouseEvent) => {
 
 const handleClick = () => {
   clickCount.value++
-  
+
   if (buttonRef.value) {
     // Bounce animation
     gsap.to(buttonRef.value, {
@@ -85,7 +85,7 @@ const handleClick = () => {
     if (clickCount.value >= 5) {
       const randomX = (Math.random() - 0.5) * 200
       const randomY = (Math.random() - 0.5) * 200
-      
+
       gsap.to(buttonRef.value, {
         x: randomX,
         y: randomY,
@@ -111,15 +111,20 @@ onUnmounted(() => {
     <button
       ref="buttonRef"
       @mouseenter="isHovered = true"
-      @mouseleave="isHovered = false; gsap.to(buttonRef, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.5)' })"
+      @mouseleave="
+        isHovered = false
+        gsap.to(buttonRef, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.5)' })
+      "
       @click="handleClick"
-      :class="cn(
-        'relative px-8 py-4 rounded-2xl font-bold text-white',
-        'shadow-lg transform transition-all duration-200',
-        'hover:scale-105 active:scale-95',
-        'border-2 border-white/30',
-        variantClasses[variant],
-      )"
+      :class="
+        cn(
+          'relative px-8 py-4 rounded-2xl font-bold text-white',
+          'shadow-lg transform transition-all duration-200',
+          'hover:scale-105 active:scale-95',
+          'border-2 border-white/30',
+          variantClasses[variant],
+        )
+      "
     >
       <span class="relative z-10">{{ text }}</span>
       <div

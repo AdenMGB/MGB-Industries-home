@@ -7,13 +7,17 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   ShieldCheckIcon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/vue/24/outline'
 import { HomeIcon, FolderIcon, UserIcon, EnvelopeIcon, CubeIcon } from '@heroicons/vue/24/solid'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { useAuth } from '@/composables/useAuth'
+import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
+const { themeMode, toggleTheme } = useTheme()
 const router = useRouter()
 const { user, isAuthenticated, isAdmin, logout, checkAuth } = useAuth()
 
@@ -180,7 +184,7 @@ onUnmounted(() => {
       <!-- Logo/Brand with animation -->
       <router-link
         to="/"
-        class="text-2xl font-light tracking-tight text-gray-800 hover:text-coral transition-all duration-300 transform-gpu hover:scale-105"
+        class="text-2xl font-light tracking-tight text-gray-800 dark:text-gray-200 hover:text-coral transition-all duration-300 transform-gpu hover:scale-105"
       >
         AdenMGB
       </router-link>
@@ -198,8 +202,8 @@ onUnmounted(() => {
               'transition-all duration-300 transform-gpu',
               'hover:scale-105 active:scale-95',
               isActive(item.path)
-                ? 'bg-peach/20 text-gray-800 scale-105'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+                ? 'bg-peach/20 dark:bg-peach/30 text-gray-800 dark:text-white scale-105'
+                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50',
             )
           "
         >
@@ -212,6 +216,22 @@ onUnmounted(() => {
           </span>
         </router-link>
 
+        <!-- Theme Toggle -->
+        <button
+          @click="toggleTheme"
+          :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          :class="cn(
+            'p-2 rounded-lg text-sm font-normal',
+            'transition-all duration-300 transform-gpu',
+            'hover:scale-105 active:scale-95',
+            'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200',
+            'hover:bg-white/40 dark:hover:bg-gray-700/40',
+          )"
+        >
+          <SunIcon v-if="themeMode === 'dark'" class="w-5 h-5" />
+          <MoonIcon v-else class="w-5 h-5" />
+        </button>
+
         <!-- Auth Section -->
         <div v-if="!isAuthenticated" class="flex items-center gap-2 ml-2">
           <router-link
@@ -220,7 +240,7 @@ onUnmounted(() => {
               'px-4 py-2 rounded-lg text-sm font-normal',
               'transition-all duration-300 transform-gpu',
               'hover:scale-105 active:scale-95',
-              'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+              'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50',
             )"
           >
             Sign In
@@ -229,8 +249,8 @@ onUnmounted(() => {
             to="/signup"
             :class="cn(
               'px-4 py-2 rounded-lg text-sm font-normal',
-              'bg-peach/30 text-gray-800',
-              'hover:bg-peach/40 transition-all duration-300',
+              'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white',
+              'hover:bg-peach/40 dark:hover:bg-peach/40 transition-all duration-300',
               'transform-gpu hover:scale-105 active:scale-95',
             )"
           >
@@ -250,8 +270,8 @@ onUnmounted(() => {
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal',
               'transition-all duration-300 transform-gpu',
               'hover:scale-105 active:scale-95',
-              'text-gray-600 hover:text-gray-800 hover:bg-white/40',
-              isAccountDropdownOpen && 'bg-white/40',
+              'text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50',
+              isAccountDropdownOpen && 'bg-white/40 dark:bg-gray-700/50',
             )"
           >
             <UserIcon class="w-4 h-4" />
@@ -267,15 +287,15 @@ onUnmounted(() => {
             v-if="isAccountDropdownOpen"
             :class="cn(
               'absolute right-0 mt-2 w-56 rounded-xl',
-              'bg-white/95 backdrop-blur-md border border-gray-200/50',
+              'bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
               'shadow-lg overflow-hidden',
             )"
           >
             <div class="p-2 space-y-1">
               <!-- User Info -->
-              <div class="px-3 py-2 border-b border-gray-200/50">
-                <p class="text-sm font-medium text-gray-800 truncate">{{ user?.name }}</p>
-                <p class="text-xs text-gray-500 truncate">{{ user?.email }}</p>
+              <div class="px-3 py-2 border-b border-gray-200/50 dark:border-gray-600/50">
+                <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{{ user?.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ user?.email }}</p>
                 <span
                   v-if="isAdmin"
                   :class="cn(
@@ -293,7 +313,7 @@ onUnmounted(() => {
                 @click="isAccountDropdownOpen = false"
                 :class="cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
-                  'text-gray-700 hover:bg-peach/20',
+                  'text-gray-700 dark:text-gray-200 hover:bg-peach/20 dark:hover:bg-peach/20',
                   'transition-all duration-300',
                   'hover:scale-[1.02]',
                 )"
@@ -309,7 +329,7 @@ onUnmounted(() => {
                 @click="isAccountDropdownOpen = false"
                 :class="cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
-                  'text-gray-700 hover:bg-lavender/20',
+                  'text-gray-700 dark:text-gray-200 hover:bg-lavender/20 dark:hover:bg-lavender/20',
                   'transition-all duration-300',
                   'hover:scale-[1.02]',
                 )"
@@ -323,7 +343,7 @@ onUnmounted(() => {
                 @click="handleLogout"
                 :class="cn(
                   'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
-                  'text-red-700 hover:bg-red-50',
+                  'text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30',
                   'transition-all duration-300',
                   'hover:scale-[1.02]',
                 )"
@@ -339,7 +359,7 @@ onUnmounted(() => {
       <!-- Mobile Menu Button -->
       <button
         @click="toggleNav"
-        class="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-white/40 transition-all duration-300 transform-gpu hover:scale-110 active:scale-95"
+        class="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50 transition-all duration-300 transform-gpu hover:scale-110 active:scale-95"
       >
         <Bars3Icon
           v-if="!isOpen"
@@ -354,12 +374,12 @@ onUnmounted(() => {
     <div
       ref="backdropRef"
       v-if="isOpen"
-      class="fixed inset-0 bg-white/60 backdrop-blur-xl z-40 md:hidden transition-opacity duration-300"
+      class="fixed inset-0 bg-white/60 dark:bg-gray-950/80 backdrop-blur-xl z-40 md:hidden transition-opacity duration-300"
       @click="toggleNav"
     />
     <div
       ref="navRef"
-      class="fixed top-0 left-0 h-full w-72 z-50 bg-cream/95 backdrop-blur-xl border-r border-gray-200/50 shadow-xl p-8 md:hidden transform-gpu"
+      class="fixed top-0 left-0 h-full w-72 z-50 bg-cream/95 dark:bg-gray-900/98 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 shadow-xl p-8 md:hidden transform-gpu"
     >
       <div class="flex flex-col gap-2 mt-16">
         <router-link
@@ -373,8 +393,8 @@ onUnmounted(() => {
               'transition-all duration-300 transform-gpu',
               'hover:scale-105 active:scale-95',
               isActive(item.path)
-                ? 'bg-peach/20 text-gray-800 scale-105'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+                ? 'bg-peach/20 text-gray-800 dark:text-gray-200 scale-105'
+                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white/40 dark:hover:bg-gray-700/40',
             )
           "
         >
@@ -382,8 +402,25 @@ onUnmounted(() => {
           <span>{{ item.name }}</span>
         </router-link>
 
+        <!-- Mobile Theme Toggle -->
+        <button
+          @click="toggleTheme()"
+          :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          :class="cn(
+            'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+            'transition-all duration-300 transform-gpu',
+            'hover:scale-105 active:scale-95',
+            'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200',
+            'hover:bg-white/40 dark:hover:bg-gray-700/40',
+          )"
+        >
+          <SunIcon v-if="themeMode === 'dark'" class="w-5 h-5" />
+          <MoonIcon v-else class="w-5 h-5" />
+          <span>{{ themeMode === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
+        </button>
+
         <!-- Mobile Auth Section -->
-        <div v-if="!isAuthenticated" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50">
+        <div v-if="!isAuthenticated" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
           <router-link
             to="/login"
             @click="navigate('/login')"
@@ -413,7 +450,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Mobile Account Section -->
-        <div v-else class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50">
+        <div v-else class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
           <div class="px-4 py-2 mb-2">
             <p class="text-sm font-medium text-gray-800">{{ user?.name }}</p>
             <p class="text-xs text-gray-500">{{ user?.email }}</p>

@@ -14,6 +14,12 @@ const recordGameVisitSchema = z.object({
   gameHref: z.string().min(1),
 })
 
+const addFavoriteSchema = z.object({
+  gameId: z.string().min(1),
+  gameName: z.string().min(1),
+  gameHref: z.string().min(1),
+})
+
 export async function gameSaveRoutes(fastify: FastifyInstance) {
   const db = getDatabase()
 
@@ -170,6 +176,71 @@ export async function gameSaveRoutes(fastify: FastifyInstance) {
       }>
 
       return reply.send({ history })
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Internal server error' })
+    }
+  })
+
+  // Get game favorites
+  fastify.get('/api/game-favorites', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { user } = request as { user: { userId: string } }
+
+      const favorites = db
+        .prepare(`
+          SELECT game_id, game_name, game_href, created_at
+          FROM game_favorites
+          WHERE user_id = ?
+          ORDER BY created_at DESC
+        `)
+        .all(user.userId) as Array<{
+        game_id: string
+        game_name: string
+        game_href: string
+        created_at: string
+      }>
+
+      return reply.send({ favorites })
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Internal server error' })
+    }
+  })
+
+  // Add game to favorites
+  fastify.post('/api/game-favorites', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const body = addFavoriteSchema.parse(request.body)
+      const { user } = request as { user: { userId: string } }
+
+      db.prepare(`
+        INSERT INTO game_favorites (user_id, game_id, game_name, game_href)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, game_id) DO UPDATE SET
+          game_name = excluded.game_name,
+          game_href = excluded.game_href
+      `).run(user.userId, body.gameId, body.gameName, body.gameHref)
+
+      return reply.send({ message: 'Added to favorites' })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.code(400).send({ error: 'Validation error', details: error.errors })
+      }
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Internal server error' })
+    }
+  })
+
+  // Remove game from favorites
+  fastify.delete('/api/game-favorites/:gameId', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { gameId } = request.params as { gameId: string }
+      const { user } = request as { user: { userId: string } }
+
+      db.prepare('DELETE FROM game_favorites WHERE user_id = ? AND game_id = ?').run(user.userId, gameId)
+
+      return reply.send({ message: 'Removed from favorites' })
     } catch (error) {
       fastify.log.error(error)
       return reply.code(500).send({ error: 'Internal server error' })

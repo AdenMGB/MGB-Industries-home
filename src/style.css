@@ -5,6 +5,7 @@
 @layer base {
   body {
     @apply bg-cream text-gray-800 antialiased;
+    @apply dark:bg-gray-950 dark:text-gray-100;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
@@ -48,6 +49,10 @@
   background: rgba(255, 248, 231, 0.5);
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.8);
+}
+
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 181, 167, 0.4);
   border-radius: 3px;
@@ -56,4 +61,12 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 181, 167, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
 }

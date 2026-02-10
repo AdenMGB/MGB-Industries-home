@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { cn } from '@/utils/cn'
-import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, ClockIcon, StarIcon, CubeIcon, Squares2X2Icon } from '@heroicons/vue/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid'
 import { useAuth } from '@/composables/useAuth'
 import { api } from '@/api/client'
+import { useToast } from '@/composables/useToast'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
@@ -24,7 +26,13 @@ const searchQuery = ref('')
 const selectedSection = ref<string | null>(null)
 const offlineGames = ref<Array<{ name: string; href: string }>>([])
 const gameHistory = ref<Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }>>([])
+const gameFavorites = ref<Array<{ game_id: string; game_name: string; game_href: string; created_at: string }>>([])
+const favoritedGameIds = ref<Set<string>>(new Set())
 const { isAuthenticated } = useAuth()
+const { success, error: showError } = useToast()
+
+const getGameId = (name: string) =>
+  name.toLowerCase().replace(/\s/g, '-').replace(/[^a-z0-9-]/g, '')
 
 // Generate abbreviation for game name
 const getGameAbbreviation = (name: string): string => {
@@ -263,6 +271,12 @@ const sections = computed(() => {
   return Array.from(new Set(games.value.map((g) => g.section)))
 })
 
+const gameStats = computed(() => ({
+  total: games.value.length,
+  sections: sections.value.length,
+  favorites: gameFavorites.value.length,
+}))
+
 const filteredGames = computed(() => {
   let filtered = games.value
 
@@ -301,6 +315,36 @@ const openGameFromHistory = (historyItem: { game_id: string; game_href: string }
   })
 }
 
+const toggleFavorite = async (e: Event, game: Game) => {
+  e.stopPropagation()
+  if (!isAuthenticated.value) return
+  const gameId = getGameId(game.name)
+  const isFav = favoritedGameIds.value.has(gameId)
+  try {
+    if (isFav) {
+      await api.removeGameFavorite(gameId)
+      favoritedGameIds.value = new Set([...favoritedGameIds.value].filter((id) => id !== gameId))
+      gameFavorites.value = gameFavorites.value.filter((f) => f.game_id !== gameId)
+      success('Removed from favorites')
+    } else {
+      await api.addGameFavorite(gameId, game.name, game.href)
+      favoritedGameIds.value = new Set([...favoritedGameIds.value, gameId])
+      gameFavorites.value = [{ game_id: gameId, game_name: game.name, game_href: game.href, created_at: new Date().toISOString() }, ...gameFavorites.value]
+      success('Added to favorites')
+    }
+  } catch (error) {
+    showError('Failed to update favorites')
+  }
+}
+
+const openGameFromFavorite = (fav: { game_id: string; game_href: string }) => {
+  router.push({
+    name: 'Game',
+    params: { id: fav.game_id },
+    query: { href: fav.game_href },
+  })
+}
+
 // Find game in gamesData by name or href
 const findGameInDataSet = (gameName: string, gameHref: string): Game | null => {
   return games.value.find(
@@ -329,20 +373,28 @@ onMounted(async () => {
     console.error('Failed to load offline games:', error)
   }
 
-  // Load game history if authenticated
+  // Load game history and favorites if authenticated
   if (isAuthenticated.value) {
     try {
-      const response = await api.getGameHistory()
-      if (response.data) {
-        gameHistory.value = response.data.history || []
+      const [historyRes, favoritesRes] = await Promise.all([
+        api.getGameHistory(),
+        api.getGameFavorites(),
+      ])
+      if (historyRes.data) {
+        gameHistory.value = historyRes.data.history || []
+      }
+      if (favoritesRes.data) {
+        gameFavorites.value = favoritesRes.data.favorites || []
+        favoritedGameIds.value = new Set(favoritesRes.data.favorites.map((f) => f.game_id))
       }
     } catch (error) {
-      console.error('Failed to load game history:', error)
+      console.error('Failed to load game data:', error)
     }
   }
 
   // Set initial states to prevent flash
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
+  gsap.set('.stat-card', { opacity: 0, y: 20, scale: 0.98 })
   gsap.set('.search-container', { opacity: 0, x: -30, scale: 0.95 })
   gsap.set('.filter-tag', { opacity: 0, scale: 0.8, x: 20 })
   gsap.set('[data-game-card]', { opacity: 0, y: 40, scale: 0.95 })
@@ -358,6 +410,19 @@ onMounted(async () => {
       y: 0,
       scale: 1,
       duration: 0.6,
+    },
+    0,
+  )
+
+  tl.to(
+    '.stat-card',
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.5,
+      stagger: 0.1,
+      delay: 0.1,
     },
     0,
   )
@@ -408,17 +473,62 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen py-24 px-4 md:px-8">
     <div class="max-w-7xl mx-auto">
-      <!-- Asymmetric header layout -->
-      <div class="page-header mb-20 grid md:grid-cols-12 gap-8 items-end">
-        <div class="md:col-span-8">
-          <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800">
-            Games
-          </h1>
+      <!-- Header (Admin-style typography) -->
+      <div class="page-header mb-12">
+        <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
+          Games
+        </h1>
+        <p class="text-base text-gray-600 dark:text-gray-400">
+          A collection of classic and modern browser games. Click any game to play!
+        </p>
+      </div>
+
+      <!-- Stats Cards (Admin-style pastel) -->
+      <div
+        :class="cn(
+          'grid grid-cols-1 gap-6 mb-12',
+          isAuthenticated ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
+        )"
+      >
+        <div
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-peach/10 backdrop-blur-md border border-gray-200/50 dark:border-peach/20"
+        >
+          <div class="flex items-center gap-4">
+            <div class="p-3 rounded-lg bg-peach/20 dark:bg-peach/30">
+              <CubeIcon class="w-8 h-8 text-gray-700 dark:text-peach" />
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Total Games</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">{{ gameStats.total }}</p>
+            </div>
+          </div>
         </div>
-        <div class="md:col-span-4">
-          <p class="text-base text-gray-600">
-            A collection of classic and modern browser games. Click any game to play!
-          </p>
+        <div
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-lavender/10 backdrop-blur-md border border-gray-200/50 dark:border-lavender/20"
+        >
+          <div class="flex items-center gap-4">
+            <div class="p-3 rounded-lg bg-lavender/20 dark:bg-lavender/30">
+              <Squares2X2Icon class="w-8 h-8 text-gray-700 dark:text-lavender" />
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Categories</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">{{ gameStats.sections }}</p>
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="isAuthenticated"
+          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-mint/10 backdrop-blur-md border border-gray-200/50 dark:border-mint/20"
+        >
+          <div class="flex items-center gap-4">
+            <div class="p-3 rounded-lg bg-mint/20 dark:bg-mint/30">
+              <StarIconSolid class="w-8 h-8 text-amber-500" />
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Favorites</p>
+              <p class="text-3xl font-semibold text-gray-800 dark:text-white">{{ gameStats.favorites }}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -429,10 +539,10 @@ onMounted(async () => {
           <div
             :class="
               cn(
-                'relative w-full',
-                'bg-white/40 backdrop-blur-md rounded-xl',
-                'border border-gray-200/50',
-                'transition-all duration-300 hover:bg-white/50',
+              'relative w-full',
+              'bg-white/40 dark:bg-gray-800/60 backdrop-blur-md rounded-xl',
+              'border border-gray-200/50 dark:border-gray-600/50',
+              'transition-all duration-300 hover:bg-white/50 dark:hover:bg-gray-700/60',
               )
             "
           >
@@ -445,8 +555,8 @@ onMounted(async () => {
               placeholder="Search games..."
               :class="
                 cn(
-                  'w-full pl-12 pr-4 py-3 bg-transparent',
-                  'text-gray-700 placeholder-gray-400',
+              'w-full pl-12 pr-4 py-3 bg-transparent',
+              'text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500',
                   'focus:outline-none rounded-xl',
                 )
               "
@@ -463,8 +573,8 @@ onMounted(async () => {
               cn(
                 'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
                 selectedSection === null
-                  ? 'bg-peach/30 text-gray-800 scale-105'
-                  : 'bg-white/40 text-gray-600 hover:bg-white/60 hover:scale-105',
+                  ? 'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white scale-105'
+                  : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
               )
             "
           >
@@ -479,8 +589,8 @@ onMounted(async () => {
               cn(
                 'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
                 selectedSection === section
-                  ? 'bg-lavender/30 text-gray-800 scale-105'
-                  : 'bg-white/40 text-gray-600 hover:bg-white/60 hover:scale-105',
+                  ? 'bg-lavender/30 dark:bg-lavender/30 text-gray-800 dark:text-white scale-105'
+                  : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
               )
             "
           >
@@ -489,11 +599,58 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!-- Favorites Section (if signed in) -->
+      <div v-if="isAuthenticated && gameFavorites.length > 0" class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+          <StarIconSolid class="w-4 h-4 text-amber-500" />
+          <h2 class="text-base font-medium text-gray-700 dark:text-gray-300">Favorites</h2>
+        </div>
+        <div class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2">
+          <button
+            v-for="item in gameFavorites"
+            :key="item.game_id"
+            @click="openGameFromFavorite(item)"
+            :class="cn(
+              'group relative overflow-hidden rounded-lg',
+              'bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50',
+              'hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all duration-300',
+              'hover:scale-105 active:scale-95',
+              'shadow-sm hover:shadow-md',
+            )"
+          >
+            <div
+              class="aspect-square relative overflow-hidden rounded-t-lg flex items-center justify-center"
+              :style="{ backgroundColor: getGameColor(item.game_name) }"
+            >
+              <img
+                v-show="!imageLoadFailed[item.game_name]"
+                :src="getGameImageUrl(item.game_name)"
+                alt=""
+                class="absolute inset-0 w-full h-full object-cover"
+                @error="setImageFailed(item.game_name)"
+              />
+              <span
+                v-show="imageLoadFailed[item.game_name]"
+                class="text-lg font-semibold transition-transform duration-300 group-hover:scale-110 relative z-10"
+                :style="{ color: getGameTextColor(item.game_name) }"
+              >
+                {{ getGameAbbreviation(item.game_name) }}
+              </span>
+            </div>
+            <div class="p-1.5">
+              <h3 class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                {{ item.game_name }}
+              </h3>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <!-- Game History Section (if signed in) -->
       <div v-if="isAuthenticated && gameHistory.length > 0" class="mb-8">
         <div class="flex items-center gap-2 mb-3">
-          <ClockIcon class="w-4 h-4 text-gray-600" />
-          <h2 class="text-base font-medium text-gray-700">Recently Played</h2>
+          <ClockIcon class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <h2 class="text-base font-medium text-gray-700 dark:text-gray-300">Recently Played</h2>
         </div>
         <div class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2">
           <button
@@ -551,9 +708,9 @@ onMounted(async () => {
           :class="
             cn(
               'group cursor-pointer transform-gpu',
-              'bg-white/40 backdrop-blur-md rounded-xl',
-              'border border-gray-200/50',
-              'hover:bg-white/60 transition-all duration-300',
+              'bg-white/40 dark:bg-gray-800/80 backdrop-blur-md rounded-xl',
+              'border border-gray-200/50 dark:border-gray-700/50',
+              'hover:bg-white/60 dark:hover:bg-gray-700/80 transition-all duration-300',
               'hover:scale-105 active:scale-95',
             )
           "
@@ -577,15 +734,33 @@ onMounted(async () => {
             >
               {{ getGameAbbreviation(game.name) }}
             </span>
+            <!-- Favorite button (logged in only) -->
+            <button
+              v-if="isAuthenticated"
+              @click="toggleFavorite($event, game)"
+              :aria-label="favoritedGameIds.has(getGameId(game.name)) ? 'Remove from favorites' : 'Add to favorites'"
+              :class="cn(
+                'absolute top-2 right-2 z-20 p-1.5 rounded-lg',
+                'bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm',
+                'transition-all duration-300 hover:scale-110 active:scale-95',
+                'focus:outline-none focus:ring-2 focus:ring-peach/50',
+              )"
+            >
+              <StarIconSolid
+                v-if="favoritedGameIds.has(getGameId(game.name))"
+                class="w-4 h-4 text-amber-500"
+              />
+              <StarIcon v-else class="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            </button>
           </div>
           <div class="p-3 md:p-4">
             <h3
-              class="text-sm md:text-base font-medium text-gray-800 group-hover:text-coral transition-colors duration-300 line-clamp-2"
+              class="text-sm md:text-base font-medium text-gray-800 dark:text-white group-hover:text-coral transition-colors duration-300 line-clamp-2"
             >
               {{ game.name }}
             </h3>
             <p
-              class="text-xs text-gray-500 mt-1 line-clamp-1"
+              class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1"
             >
               {{ game.section }}
             </p>
@@ -599,11 +774,11 @@ onMounted(async () => {
         :class="
           cn(
             'text-center py-24 rounded-xl',
-            'bg-white/40 backdrop-blur-sm border border-gray-200/50',
+            'bg-white/40 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50',
           )
         "
       >
-        <p class="text-gray-600">
+        <p class="text-gray-600 dark:text-gray-400">
           No games found
         </p>
       </div>
@@ -612,6 +787,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.stat-card {
+  transform-origin: center center;
+}
+
 .filter-tag {
   transform-origin: center center;
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftIcon,
@@ -8,16 +8,22 @@ import {
   ArrowRightIcon,
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
+  StarIcon,
 } from '@heroicons/vue/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { useAuth } from '@/composables/useAuth'
 import { loadAndInjectSaveData, setupPostMessageSync, forceSaveGame } from '@/utils/gameSaveSync'
 import { api } from '@/api/client'
+import { useToast } from '@/composables/useToast'
+import { setMeta } from '@/composables/useMeta'
+import { SITE_URL } from '@/config/seo'
 
 const route = useRoute()
 const router = useRouter()
 const { isAuthenticated } = useAuth()
+const { success, error: showError } = useToast()
 
 const gameId = computed(() => route.params.id as string)
 const gameHref = computed(() => route.query.href as string || `Gams-main/g/${gameId.value}.html`)
@@ -29,11 +35,46 @@ const gameName = computed(() => {
   return nameFromId
 })
 
+// Dynamic meta for game page
+watch(
+  () => ({ name: gameName.value, id: gameId.value }),
+  ({ name }) => {
+    setMeta({
+      title: name ? `${name} - Game` : 'Game',
+      description: `Play ${name || 'this game'} in your browser. Save progress and favorite.`,
+      canonical: `${SITE_URL}/games/${gameId.value}`,
+    })
+  },
+  { immediate: true }
+)
+
 const iframeRef = ref<HTMLIFrameElement>()
 const gameContainerRef = ref<HTMLElement>()
 const isLoading = ref(true)
 const isFullscreen = ref(false)
+const isFavorite = ref(false)
+const isTogglingFavorite = ref(false)
 let cleanupSync: (() => void) | null = null
+
+const toggleFavorite = async () => {
+  if (!isAuthenticated.value || isTogglingFavorite.value) return
+  isTogglingFavorite.value = true
+  try {
+    if (isFavorite.value) {
+      await api.removeGameFavorite(gameId.value)
+      isFavorite.value = false
+      success('Removed from favorites')
+    } else {
+      await api.addGameFavorite(gameId.value, gameName.value, gameHref.value)
+      isFavorite.value = true
+      success('Added to favorites')
+    }
+  } catch (error) {
+    showError('Failed to update favorites')
+  } finally {
+    isTogglingFavorite.value = false
+  }
+}
 
 const goBack = async () => {
   // Force save before navigating away
@@ -100,10 +141,13 @@ onMounted(async () => {
     { opacity: 1, scale: 1, duration: 0.4, ease: 'cubic-bezier(0.4, 0, 0.2, 1)' }
   )
 
-  // Record game visit if authenticated
+  // Record game visit and check favorite status if authenticated
   if (isAuthenticated.value) {
     try {
       await api.recordGameVisit(gameId.value, gameName.value, gameHref.value)
+      const favRes = await api.getGameFavorites()
+      const favIds = new Set((favRes.data?.favorites || []).map((f) => f.game_id))
+      isFavorite.value = favIds.has(gameId.value)
     } catch (error) {
       // Silently fail - don't block game loading
       console.warn('Failed to record game visit:', error)
@@ -233,16 +277,38 @@ onUnmounted(() => {
           )"
           :style="isFullscreen ? 'height: 100vh; width: 100vw;' : 'height: calc(100vh - 200px); min-height: 600px;'"
         >
+          <!-- Favorite button (logged in only) -->
+          <button
+            v-if="isAuthenticated && !isFullscreen"
+            @click="toggleFavorite"
+            :disabled="isTogglingFavorite"
+            :aria-label="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+            :class="cn(
+              'absolute top-4 right-14 z-20',
+              'flex items-center justify-center w-10 h-10 rounded-lg',
+              'bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
+              'hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300',
+              'hover:scale-105 active:scale-95',
+              'text-gray-700 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100',
+              'shadow-md',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )"
+            :title="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+          >
+            <StarIconSolid v-if="isFavorite" class="w-5 h-5 text-amber-500" />
+            <StarIcon v-else class="w-5 h-5" />
+          </button>
+
           <!-- Fullscreen button -->
           <button
             @click="toggleFullscreen"
             :class="cn(
               'absolute top-4 right-4 z-20',
               'flex items-center justify-center w-10 h-10 rounded-lg',
-              'bg-white/60 backdrop-blur-md border border-gray-200/50',
-              'hover:bg-white/80 transition-all duration-300',
+              'bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
+              'hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300',
               'hover:scale-105 active:scale-95',
-              'text-gray-700 hover:text-gray-800',
+              'text-gray-700 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100',
               'shadow-md',
             )"
             :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"

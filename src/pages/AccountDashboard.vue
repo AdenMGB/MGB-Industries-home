@@ -16,8 +16,11 @@ import {
   XMarkIcon,
   CheckIcon,
 } from '@heroicons/vue/24/outline'
+import { CubeIcon, ClockIcon, StarIcon } from '@heroicons/vue/24/solid'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
+const { success, error: showError } = useToast()
 const { user, isAdmin, logout, checkAuth } = useAuth()
 
 // Edit states
@@ -37,9 +40,32 @@ const successMessage = ref('')
 const errorMessage = ref('')
 const isLoading = ref(false)
 
+// Game stats
+const gameHistory = ref<Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }>>([])
+const gameFavorites = ref<Array<{ game_id: string; game_name: string; game_href: string; created_at: string }>>([])
+const gamesWithSaves = ref(0)
+
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
+const openGame = (gameId: string, gameHref: string) => {
+  router.push({ name: 'Game', params: { id: gameId }, query: { href: gameHref } })
+}
+
 onMounted(async () => {
+  // Load game stats
+  try {
+    const [historyRes, favoritesRes, savesRes] = await Promise.all([
+      api.getGameHistory(),
+      api.getGameFavorites(),
+      api.getGameSaves(),
+    ])
+    if (historyRes.data) gameHistory.value = historyRes.data.history || []
+    if (favoritesRes.data) gameFavorites.value = favoritesRes.data.favorites || []
+    if (savesRes.data) gamesWithSaves.value = Object.keys(savesRes.data.saves || {}).length
+  } catch (error) {
+    console.warn('Failed to load game stats:', error)
+  }
+
   await nextTick()
   
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
@@ -90,16 +116,20 @@ async function saveName() {
     const response = await api.updateOwnAccount({ name: editName.value })
     if (response.error) {
       errorMessage.value = response.error
+      showError(response.error)
     } else {
       successMessage.value = 'Name updated successfully'
-      await checkAuth() // Refresh user data
+      success('Name updated successfully')
+      await checkAuth()
       setTimeout(() => {
         isEditingName.value = false
         successMessage.value = ''
       }, 1500)
     }
   } catch (err) {
-    errorMessage.value = err instanceof Error ? err.message : 'Failed to update name'
+    const msg = err instanceof Error ? err.message : 'Failed to update name'
+    errorMessage.value = msg
+    showError(msg)
   } finally {
     isLoading.value = false
   }
@@ -131,16 +161,20 @@ async function saveEmail() {
     const response = await api.updateOwnAccount({ email: editEmail.value })
     if (response.error) {
       errorMessage.value = response.error
+      showError(response.error)
     } else {
       successMessage.value = 'Email updated successfully'
-      await checkAuth() // Refresh user data
+      success('Email updated successfully')
+      await checkAuth()
       setTimeout(() => {
         isEditingEmail.value = false
         successMessage.value = ''
       }, 1500)
     }
   } catch (err) {
-    errorMessage.value = err instanceof Error ? err.message : 'Failed to update email'
+    const msg = err instanceof Error ? err.message : 'Failed to update email'
+    errorMessage.value = msg
+    showError(msg)
   } finally {
     isLoading.value = false
   }
@@ -186,8 +220,10 @@ async function savePassword() {
     const response = await api.changePassword(currentPassword.value, newPassword.value)
     if (response.error) {
       errorMessage.value = response.error
+      showError(response.error)
     } else {
       successMessage.value = 'Password changed successfully'
+      success('Password changed successfully')
       setTimeout(() => {
         isChangingPassword.value = false
         currentPassword.value = ''
@@ -197,7 +233,9 @@ async function savePassword() {
       }, 1500)
     }
   } catch (err) {
-    errorMessage.value = err instanceof Error ? err.message : 'Failed to change password'
+    const msg = err instanceof Error ? err.message : 'Failed to change password'
+    errorMessage.value = msg
+    showError(msg)
   } finally {
     isLoading.value = false
   }
@@ -520,11 +558,97 @@ const handleLogout = () => {
         </div>
       </div>
 
+      <!-- Games Card -->
+      <div
+        class="card mb-6 p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50"
+      >
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+          <CubeIcon class="w-6 h-6 text-peach" />
+          Games
+        </h2>
+        <div class="space-y-6">
+          <!-- Stats row -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="p-4 rounded-lg bg-peach/10 dark:bg-peach/20 border border-peach/20 dark:border-peach/30">
+              <p class="text-2xl font-semibold text-gray-800 dark:text-gray-200">{{ gameHistory.length }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Recently played</p>
+            </div>
+            <div class="p-4 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/20 dark:border-amber-500/30">
+              <p class="text-2xl font-semibold text-gray-800 dark:text-gray-200">{{ gameFavorites.length }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Favorites</p>
+            </div>
+            <div class="p-4 rounded-lg bg-mint/10 dark:bg-mint/20 border border-mint/20 dark:border-mint/30">
+              <p class="text-2xl font-semibold text-gray-800 dark:text-gray-200">{{ gamesWithSaves }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">With saved progress</p>
+            </div>
+          </div>
+
+          <!-- Recent plays -->
+          <div v-if="gameHistory.length > 0">
+            <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2">
+              <ClockIcon class="w-4 h-4" />
+              Recent plays
+            </h3>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="item in gameHistory"
+                :key="item.game_id"
+                @click="openGame(item.game_id, item.game_href)"
+                :class="cn(
+                  'px-3 py-1.5 rounded-lg text-sm',
+                  'bg-white/60 dark:bg-gray-700/60 hover:bg-peach/20 dark:hover:bg-peach/20',
+                  'text-gray-700 dark:text-gray-300',
+                  'transition-all duration-300 hover:scale-105',
+                )"
+              >
+                {{ item.game_name }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Favorites -->
+          <div v-if="gameFavorites.length > 0">
+            <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2">
+              <StarIcon class="w-4 h-4 text-amber-500" />
+              Favorites
+            </h3>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="item in gameFavorites"
+                :key="item.game_id"
+                @click="openGame(item.game_id, item.game_href)"
+                :class="cn(
+                  'px-3 py-1.5 rounded-lg text-sm',
+                  'bg-amber-500/10 dark:bg-amber-500/20 hover:bg-amber-500/20 dark:hover:bg-amber-500/30',
+                  'text-gray-700 dark:text-gray-300 border border-amber-500/30',
+                  'transition-all duration-300 hover:scale-105',
+                )"
+              >
+                {{ item.game_name }}
+              </button>
+            </div>
+          </div>
+
+          <router-link
+            to="/games"
+            :class="cn(
+              'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+              'bg-peach/20 hover:bg-peach/30 dark:bg-peach/20 dark:hover:bg-peach/30',
+              'text-gray-800 dark:text-gray-200',
+              'transition-all duration-300 transform-gpu hover:scale-105',
+            )"
+          >
+            <CubeIcon class="w-4 h-4" />
+            Browse all games
+          </router-link>
+        </div>
+      </div>
+
       <!-- Actions Card -->
       <div
-        class="card p-6 md:p-8 rounded-xl bg-white/40 backdrop-blur-md border border-gray-200/50"
+        class="card p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50"
       >
-        <h2 class="text-2xl font-semibold mb-6 text-gray-800">Actions</h2>
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">Actions</h2>
         
         <div class="space-y-4">
           <!-- Admin Dashboard Link -->
