@@ -118,6 +118,18 @@ const getGameTextColor = (name: string): string => {
   return color.text
 }
 
+// Thumbnail image URL from Gams-main/img (served at /games/Gams-main/img/)
+const getGameImageUrl = (name: string): string => {
+  const imageName = name.toLowerCase().replace(/\s/g, '') + '.png'
+  return `/games/Gams-main/img/${imageName}`
+}
+
+// Track which game images failed to load (fallback to abbreviation)
+const imageLoadFailed = ref<Record<string, boolean>>({})
+const setImageFailed = (name: string) => {
+  imageLoadFailed.value = { ...imageLoadFailed.value, [name]: true }
+}
+
 // Extract games list from Gams.html structure
 const gamesData = [
   { title: 'Basic', type: 'section' },
@@ -496,13 +508,21 @@ onMounted(async () => {
               'shadow-sm hover:shadow-md',
             )"
           >
-            <!-- Abbreviation for all games -->
+            <!-- Thumbnail from Gams-main/img, fallback to abbreviation -->
             <div
               class="aspect-square relative overflow-hidden rounded-t-lg flex items-center justify-center"
               :style="{ backgroundColor: getGameColor(item.game_name) }"
             >
+              <img
+                v-show="!imageLoadFailed[item.game_name]"
+                :src="getGameImageUrl(item.game_name)"
+                alt=""
+                class="absolute inset-0 w-full h-full object-cover"
+                @error="setImageFailed(item.game_name)"
+              />
               <span
-                class="text-lg font-semibold transition-transform duration-300 group-hover:scale-110"
+                v-show="imageLoadFailed[item.game_name]"
+                class="text-lg font-semibold transition-transform duration-300 group-hover:scale-110 relative z-10"
                 :style="{ color: getGameTextColor(item.game_name) }"
               >
                 {{ getGameAbbreviation(item.game_name) }}
@@ -538,13 +558,21 @@ onMounted(async () => {
             )
           "
         >
-          <!-- Abbreviation for all games -->
+          <!-- Thumbnail from Gams-main/img, fallback to abbreviation -->
           <div
             class="aspect-square relative overflow-hidden rounded-t-xl flex items-center justify-center"
             :style="{ backgroundColor: getGameColor(game.name) }"
           >
+            <img
+              v-show="!imageLoadFailed[game.name]"
+              :src="getGameImageUrl(game.name)"
+              alt=""
+              class="absolute inset-0 w-full h-full object-cover"
+              @error="setImageFailed(game.name)"
+            />
             <span
-              class="text-3xl md:text-4xl font-semibold transition-transform duration-300 group-hover:scale-110"
+              v-show="imageLoadFailed[game.name]"
+              class="text-3xl md:text-4xl font-semibold transition-transform duration-300 group-hover:scale-110 relative z-10"
               :style="{ color: getGameTextColor(game.name) }"
             >
               {{ getGameAbbreviation(game.name) }}
