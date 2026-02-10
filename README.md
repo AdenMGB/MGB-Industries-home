@@ -55,6 +55,20 @@ pnpm lint
 
 ## Docker
 
+### JWT_SECRET (Production)
+
+For production deployments, set `JWT_SECRET` to a secure random string so sessions persist across server restarts and remain valid. Without it, users will be logged out on every restart.
+
+Generate a secret:
+
+```sh
+openssl rand -base64 32
+```
+
+**Docker Compose**: Copy `.env.example` to `.env` and set `JWT_SECRET=your-secure-secret`, or pass `-e JWT_SECRET=...` when running.
+
+**Manual run**: `JWT_SECRET=<secret> node server/index.js` or add to your systemd/PM2 service environment.
+
 ### Using Docker Compose
 
 The easiest way to run the application with Docker:
@@ -62,6 +76,9 @@ The easiest way to run the application with Docker:
 ```sh
 # Set your GitHub repository (optional, defaults to adenmgb/aden-website)
 export GITHUB_REPOSITORY=your-username/aden-website
+
+# Optional: Set JWT_SECRET for production (recommended)
+export JWT_SECRET=your-secure-secret-from-openssl-rand-base64-32
 
 # Start the container
 docker-compose up -d

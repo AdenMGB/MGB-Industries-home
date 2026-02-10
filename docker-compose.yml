@@ -9,6 +9,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-change-me-use-a-secure-random-string}
     volumes:
       - ./data:/app/data
     healthcheck:

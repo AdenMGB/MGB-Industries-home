@@ -1,9 +1,14 @@
 import { SignJWT, jwtVerify } from 'jose'
 import type { JWTPayload } from '../types/index.js'
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  'default-secret-change-in-production-' + Math.random().toString(36)
+const DEV_SECRET = 'dev-secret-local-only-do-not-use-in-production'
+const JWT_SECRET = process.env.JWT_SECRET || DEV_SECRET
+
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === DEV_SECRET) {
+  console.warn(
+    'WARNING: JWT_SECRET not set. Using insecure default. Set JWT_SECRET in production!',
+  )
+}
 
 const secret = new TextEncoder().encode(JWT_SECRET)
 const JWT_EXPIRATION = '7d'
