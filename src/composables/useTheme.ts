@@ -7,7 +7,6 @@ function getInitialTheme(): ThemeMode {
   try {
     const saved = localStorage.getItem('theme') as ThemeMode | null
     if (saved === 'dark' || saved === 'light') return saved
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark'
   } catch {
     // ignore
   }

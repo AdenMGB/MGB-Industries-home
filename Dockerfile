@@ -83,8 +83,8 @@ RUN printf 'server {\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
-    # Serve game files directly from mounted volume\n\
-    location /games/ {\n\
+    # Serve game files directly from mounted volume (^~ prevents regex from overriding)\n\
+    location ^~ /games/ {\n\
         alias /app/data/games/;\n\
     }\n\
     \n\
