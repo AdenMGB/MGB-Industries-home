@@ -20,7 +20,7 @@ const router = useRouter()
 const { isAuthenticated } = useAuth()
 
 const gameId = computed(() => route.params.id as string)
-const gameHref = computed(() => route.query.href as string || `data/games/g/${gameId.value}.html`)
+const gameHref = computed(() => route.query.href as string || `Gams-main/g/${gameId.value}.html`)
 const gameName = computed(() => {
   // Extract game name from route params or query
   const nameFromId = gameId.value.split('-').map(word => 
@@ -270,7 +270,7 @@ onUnmounted(() => {
 
           <iframe
             ref="iframeRef"
-            :src="`/api/games/file/${gameHref}`"
+            :src="`/games/${gameHref}`"
             class="w-full h-full border-0"
             frameborder="0"
             allowfullscreen

@@ -1,5 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import fastifyStatic from '@fastify/static'
+import { join } from 'node:path'
+import { existsSync } from 'node:fs'
 import { databasePlugin } from './plugins/database.js'
 import { authPlugin } from './plugins/auth.js'
 import { authRoutes } from './routes/auth.js'
@@ -23,6 +26,16 @@ export async function createServer() {
   // Register plugins (database must be first)
   await fastify.register(databasePlugin)
   await fastify.register(authPlugin)
+
+  // Serve game files from data/games at /games/
+  const gamesRoot = process.env.GAMES_BASE || join(process.cwd(), 'data', 'games')
+  if (existsSync(gamesRoot)) {
+    await fastify.register(fastifyStatic, {
+      root: gamesRoot,
+      prefix: '/games/',
+      decorateReply: false,
+    })
+  }
 
   // Register routes (they will check for database availability themselves)
   await fastify.register(authRoutes)

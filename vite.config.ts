@@ -42,6 +42,10 @@ export default defineConfig(async () => {
           target: 'http://localhost:3001',
           changeOrigin: true,
         },
+        '/games': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
       },
     },
   }
