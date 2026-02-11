@@ -62,7 +62,7 @@ const routes: RouteRecordRaw[] = [
       transition: 'slide-up',
       seo: {
         title: 'Developer Tools',
-        description: 'Developer utilities: IPv4 to binary converter, IPv6 to hexadecimal converter.',
+        description: 'Developer utilities: Base64, JSON, URL, UUID, timestamps, and more.',
       },
     },
   },
@@ -87,6 +87,66 @@ const routes: RouteRecordRaw[] = [
       seo: {
         title: 'IPv6 to Hexadecimal',
         description: 'Convert IPv6 addresses to expanded and pure hexadecimal.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/base64',
+    name: 'Base64',
+    component: () => import('@/pages/Base64Page.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Base64 Encode/Decode',
+        description: 'Encode and decode text to and from Base64.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/json-formatter',
+    name: 'JsonFormatter',
+    component: () => import('@/pages/JsonFormatterPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'JSON Formatter',
+        description: 'Pretty print, minify, and validate JSON.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/url-encode',
+    name: 'UrlEncode',
+    component: () => import('@/pages/UrlEncodePage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'URL Encode/Decode',
+        description: 'Encode and decode URL parameters.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/uuid-generator',
+    name: 'UuidGenerator',
+    component: () => import('@/pages/UuidGeneratorPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'UUID Generator',
+        description: 'Generate random UUIDs (v4).',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/unix-timestamp',
+    name: 'UnixTimestamp',
+    component: () => import('@/pages/UnixTimestampPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Unix Timestamp',
+        description: 'Convert between Unix timestamp and human-readable date.',
       },
     },
   },

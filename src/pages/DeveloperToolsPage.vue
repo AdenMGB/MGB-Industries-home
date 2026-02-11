@@ -3,7 +3,14 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
-import { ArrowPathIcon } from '@heroicons/vue/24/outline'
+import {
+  ArrowPathIcon,
+  CodeBracketSquareIcon,
+  DocumentDuplicateIcon,
+  LinkIcon,
+  HashtagIcon,
+  ClockIcon,
+} from '@heroicons/vue/24/outline'
 import { ChevronRightIcon } from '@heroicons/vue/24/solid'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
@@ -23,6 +30,41 @@ const tools = [
     path: '/developer-tools/ipv6-to-hex',
     icon: ArrowPathIcon,
     accent: 'lavender',
+  },
+  {
+    name: 'Base64 Encode/Decode',
+    description: 'Encode and decode text to and from Base64.',
+    path: '/developer-tools/base64',
+    icon: DocumentDuplicateIcon,
+    accent: 'mint',
+  },
+  {
+    name: 'JSON Formatter',
+    description: 'Pretty print, minify, and validate JSON.',
+    path: '/developer-tools/json-formatter',
+    icon: CodeBracketSquareIcon,
+    accent: 'soft-yellow',
+  },
+  {
+    name: 'URL Encode/Decode',
+    description: 'Encode and decode URL parameters.',
+    path: '/developer-tools/url-encode',
+    icon: LinkIcon,
+    accent: 'soft-blue',
+  },
+  {
+    name: 'UUID Generator',
+    description: 'Generate random UUIDs (v4).',
+    path: '/developer-tools/uuid-generator',
+    icon: HashtagIcon,
+    accent: 'warm-pink',
+  },
+  {
+    name: 'Unix Timestamp',
+    description: 'Convert between Unix timestamp and human-readable date.',
+    path: '/developer-tools/unix-timestamp',
+    icon: ClockIcon,
+    accent: 'peach',
   },
 ]
 
@@ -64,6 +106,10 @@ onMounted(() => {
             'focus:outline-none focus:ring-2 focus:ring-offset-2',
             tool.accent === 'peach' && 'focus:ring-peach/50 hover:border-peach/30',
             tool.accent === 'lavender' && 'focus:ring-lavender/50 hover:border-lavender/30',
+            tool.accent === 'mint' && 'focus:ring-mint/50 hover:border-mint/30',
+            tool.accent === 'soft-yellow' && 'focus:ring-soft-yellow/50 hover:border-soft-yellow/30',
+            tool.accent === 'soft-blue' && 'focus:ring-soft-blue/50 hover:border-soft-blue/30',
+            tool.accent === 'warm-pink' && 'focus:ring-warm-pink/50 hover:border-warm-pink/30',
           )"
         >
           <div class="flex items-start justify-between gap-4">
@@ -71,11 +117,15 @@ onMounted(() => {
               <div class="flex items-center gap-2 mb-2">
                 <component
                   :is="tool.icon"
-                  :class="cn(
-                    'w-5 h-5 shrink-0',
-                    tool.accent === 'peach' && 'text-peach',
-                    tool.accent === 'lavender' && 'text-lavender',
-                  )"
+                :class="cn(
+                  'w-5 h-5 shrink-0',
+                  tool.accent === 'peach' && 'text-peach',
+                  tool.accent === 'lavender' && 'text-lavender',
+                  tool.accent === 'mint' && 'text-mint',
+                  tool.accent === 'soft-yellow' && 'text-soft-yellow',
+                  tool.accent === 'soft-blue' && 'text-soft-blue',
+                  tool.accent === 'warm-pink' && 'text-warm-pink',
+                )"
                 />
                 <h2 class="text-xl font-light text-gray-800 dark:text-white">
                   {{ tool.name }}
