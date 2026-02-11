@@ -32,7 +32,8 @@
     "three": "^0.169.0",
     "vue": "^3.5.27",
     "vue-router": "^4.4.5",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "jiti": "^2.6.1"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.4",
@@ -50,7 +51,6 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.42.0",
     "eslint-plugin-vue": "~10.7.0",
-    "jiti": "^2.6.1",
     "jsdom": "^27.4.0",
     "npm-run-all2": "^8.0.4",
     "oxlint": "~1.42.0",
