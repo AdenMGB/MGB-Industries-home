@@ -10,7 +10,7 @@ import {
   SunIcon,
   MoonIcon,
 } from '@heroicons/vue/24/outline'
-import { HomeIcon, FolderIcon, UserIcon, EnvelopeIcon, CubeIcon } from '@heroicons/vue/24/solid'
+import { HomeIcon, FolderIcon, UserIcon, EnvelopeIcon, CubeIcon, CommandLineIcon } from '@heroicons/vue/24/solid'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { useAuth } from '@/composables/useAuth'
@@ -31,6 +31,7 @@ const navItems = [
   { name: 'Home', path: '/', icon: HomeIcon },
   { name: 'Projects', path: '/projects', icon: FolderIcon },
   { name: 'Games', path: '/games', icon: CubeIcon },
+  { name: 'Dev Tools', path: '/developer-tools', icon: CommandLineIcon },
   { name: 'About', path: '/about', icon: UserIcon },
   { name: 'Contact', path: '/contact', icon: EnvelopeIcon },
 ]

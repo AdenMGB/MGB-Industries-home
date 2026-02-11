@@ -2,11 +2,13 @@ import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { createJiti } from 'jiti'
 import type { DatabaseSync } from 'node:sqlite'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+const jiti = createJiti(import.meta.url)
 
 export async function runMigrations(db: DatabaseSync): Promise<void> {
   // Ensure migrations table exists
@@ -35,10 +37,9 @@ export async function runMigrations(db: DatabaseSync): Promise<void> {
     }
 
     console.log(`Running migration: ${migrationName}`)
-    const migrationPath = join(migrationsDir, file)
-    // Convert to file:// URL for Windows compatibility
-    const migrationUrl = pathToFileURL(migrationPath).href + '?t=' + Date.now()
-    const migration = await import(migrationUrl)
+    // Use jiti to load .ts files at runtime (Node doesn't natively support TS import)
+    const migrationPath = `../migrations/${file}`
+    const migration = await jiti.import(migrationPath)
 
     await migration.migration.up(db)
     db.prepare('INSERT INTO migrations (name) VALUES (?)').run(migrationName)

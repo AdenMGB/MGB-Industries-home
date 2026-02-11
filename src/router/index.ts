@@ -55,6 +55,42 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/developer-tools',
+    name: 'DeveloperTools',
+    component: () => import('@/pages/DeveloperToolsPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Developer Tools',
+        description: 'Developer utilities: IPv4 to binary converter, IPv6 to hexadecimal converter.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/ipv4-to-binary',
+    name: 'IPv4ToBinary',
+    component: () => import('@/pages/IPv4ToBinaryPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'IPv4 to Binary',
+        description: 'Convert IPv4 addresses to binary notation.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/ipv6-to-hex',
+    name: 'IPv6ToHex',
+    component: () => import('@/pages/IPv6ToHexPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'IPv6 to Hexadecimal',
+        description: 'Convert IPv6 addresses to expanded and pure hexadecimal.',
+      },
+    },
+  },
+  {
     path: '/games',
     name: 'Games',
     component: () => import('@/pages/GamesPage.vue'),
