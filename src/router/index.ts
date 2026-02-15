@@ -73,8 +73,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       transition: 'slide-up',
       seo: {
-        title: 'IPv4 to Binary',
-        description: 'Convert IPv4 addresses to binary notation.',
+        title: 'IPv4 ↔ Binary',
+        description: 'Convert between IPv4 addresses and binary notation.',
       },
     },
   },
@@ -85,8 +85,32 @@ const routes: RouteRecordRaw[] = [
     meta: {
       transition: 'slide-up',
       seo: {
-        title: 'IPv6 to Hexadecimal',
-        description: 'Convert IPv6 addresses to expanded and pure hexadecimal.',
+        title: 'IPv6 ↔ Hexadecimal',
+        description: 'Convert between IPv6 addresses and hexadecimal notation.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/number-to-binary',
+    name: 'NumberToBinary',
+    component: () => import('@/pages/NumberToBinaryPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Number to Binary',
+        description: 'Convert numbers to binary notation.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/number-to-hex',
+    name: 'NumberToHex',
+    component: () => import('@/pages/NumberToHexPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Number to Hex & Decimal',
+        description: 'Convert numbers between decimal and hexadecimal notation.',
       },
     },
   },
@@ -111,6 +135,54 @@ const routes: RouteRecordRaw[] = [
       seo: {
         title: 'JSON Formatter',
         description: 'Pretty print, minify, and validate JSON.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/color-converter',
+    name: 'ColorConverter',
+    component: () => import('@/pages/ColorConverterPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Color Converter',
+        description: 'Convert colors between hex, RGB, and HSL.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/diff-checker',
+    name: 'DiffChecker',
+    component: () => import('@/pages/DiffCheckerPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Diff Checker',
+        description: 'Compare two texts and see the differences.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/case-converter',
+    name: 'CaseConverter',
+    component: () => import('@/pages/CaseConverterPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Case Converter',
+        description: 'Convert text between camelCase, snake_case, kebab-case, and more.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/html-encode',
+    name: 'HtmlEncode',
+    component: () => import('@/pages/HtmlEncodePage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'HTML Encode/Decode',
+        description: 'Escape and unescape HTML entities.',
       },
     },
   },
@@ -147,6 +219,42 @@ const routes: RouteRecordRaw[] = [
       seo: {
         title: 'Unix Timestamp',
         description: 'Convert between Unix timestamp and human-readable date.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/regex-tester',
+    name: 'RegexTester',
+    component: () => import('@/pages/RegexTesterPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Regex Tester',
+        description: 'Test regular expressions with sample text.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/jwt-decoder',
+    name: 'JwtDecoder',
+    component: () => import('@/pages/JwtDecoderPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'JWT Decoder',
+        description: 'Decode and inspect JWT tokens.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/hash-generator',
+    name: 'HashGenerator',
+    component: () => import('@/pages/HashGeneratorPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Hash Generator',
+        description: 'Generate MD5, SHA-1, SHA-256, SHA-384, and SHA-512 hashes.',
       },
     },
   },

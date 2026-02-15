@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
-import { ClipboardDocumentIcon, LinkIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { ClipboardDocumentIcon, CodeBracketSquareIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
@@ -11,23 +11,38 @@ const { success } = useToast()
 const router = useRouter()
 
 const mode = ref<'encode' | 'decode'>('encode')
-const urlMode = ref<'component' | 'full'>('component')
 const input = ref('')
-const error = ref('')
+
+const htmlEntities: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+  '/': '&#x2F;',
+  '`': '&#x60;',
+  '=': '&#x3D;',
+}
+
+const decodeEntities: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&#x2F;': '/',
+  '&#x60;': '`',
+  '&#x3D;': '=',
+  '&apos;': "'",
+}
 
 const result = computed(() => {
-  error.value = ''
   const text = input.value
-  if (!text.trim()) return null
-  try {
-    if (mode.value === 'encode') {
-      return urlMode.value === 'component' ? encodeURIComponent(text) : encodeURI(text)
-    } else {
-      return decodeURIComponent(text.replace(/\+/g, ' '))
-    }
-  } catch (e) {
-    error.value = mode.value === 'decode' ? 'Invalid URL-encoded string' : 'Encoding failed'
-    return null
+  if (!text) return null
+  if (mode.value === 'encode') {
+    return text.replace(/[&<>"'`=/]/g, (c) => htmlEntities[c] ?? c)
+  } else {
+    return text.replace(/&(?:amp|lt|gt|quot|apos|#x?[\da-f]+);/gi, (m) => decodeEntities[m] ?? m)
   }
 })
 
@@ -65,19 +80,19 @@ onMounted(() => {
 
       <div class="page-header mb-12">
         <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
-          URL Encode / Decode
+          HTML Encode / Decode
         </h1>
         <p class="text-base text-gray-600 dark:text-gray-400">
-          Encode special characters for URLs or decode URL-encoded strings.
+          Escape HTML entities for safe embedding or decode escaped HTML back to text.
         </p>
       </div>
 
       <div class="tool-card p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
         <div class="flex items-center gap-2 mb-6">
-          <LinkIcon class="w-5 h-5 text-soft-blue" />
+          <CodeBracketSquareIcon class="w-5 h-5 text-soft-blue" />
           <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Converter</h2>
         </div>
-        <div class="flex flex-wrap gap-2 mb-4">
+        <div class="flex gap-2 mb-4">
           <button
             @click="mode = 'encode'"
             :class="cn(
@@ -96,37 +111,17 @@ onMounted(() => {
           >
             Decode
           </button>
-          <template v-if="mode === 'encode'">
-            <button
-              @click="urlMode = 'component'"
-              :class="cn(
-                'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-                urlMode === 'component' ? 'bg-soft-blue/30 text-gray-800 dark:text-white' : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-400',
-              )"
-            >
-              Component
-            </button>
-            <button
-              @click="urlMode = 'full'"
-              :class="cn(
-                'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-                urlMode === 'full' ? 'bg-soft-blue/30 text-gray-800 dark:text-white' : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-400',
-              )"
-            >
-              Full URL
-            </button>
-          </template>
         </div>
         <div class="space-y-4">
           <div>
-            <label for="url-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ mode === 'encode' ? 'Text to encode' : 'URL-encoded string to decode' }}
+            <label for="html-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ mode === 'encode' ? 'Text to encode' : 'HTML-encoded string to decode' }}
             </label>
             <textarea
-              id="url-input"
+              id="html-input"
               v-model="input"
               rows="4"
-              placeholder="Enter text..."
+              :placeholder="mode === 'encode' ? '<script>alert(1)</script>' : '&lt;script&gt;alert(1)&lt;/script&gt;'"
               :class="cn(
                 'w-full px-4 py-3 rounded-lg border font-mono text-sm resize-none',
                 'bg-white/60 dark:bg-gray-700/60 border-gray-200/50 dark:border-gray-600/50',
@@ -135,7 +130,6 @@ onMounted(() => {
                 'transition-all duration-200',
               )"
             />
-            <p v-if="error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
           </div>
           <div v-if="result" class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Result</label>

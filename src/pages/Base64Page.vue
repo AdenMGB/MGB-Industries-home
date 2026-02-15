@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
-import { ClipboardDocumentIcon, DocumentDuplicateIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { ClipboardDocumentIcon, DocumentDuplicateIcon, ArrowLeftIcon, DocumentArrowUpIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
@@ -13,6 +13,9 @@ const router = useRouter()
 const mode = ref<'encode' | 'decode'>('encode')
 const input = ref('')
 const error = ref('')
+const inputSource = ref<'text' | 'file'>('text')
+const fileName = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const result = computed(() => {
   error.value = ''
@@ -20,6 +23,7 @@ const result = computed(() => {
   if (!text.trim()) return null
   try {
     if (mode.value === 'encode') {
+      if (inputSource.value === 'file') return text
       return btoa(unescape(encodeURIComponent(text)))
     } else {
       return decodeURIComponent(escape(atob(text)))
@@ -29,6 +33,35 @@ const result = computed(() => {
     return null
   }
 })
+
+const processFile = async (file: File) => {
+  inputSource.value = 'file'
+  fileName.value = file.name
+  const buf = await file.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i] ?? 0)
+  }
+  input.value = btoa(binary)
+}
+
+const onFileChange = async (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) await processFile(file)
+  ;(e.target as HTMLInputElement).value = ''
+}
+
+const onDrop = async (e: DragEvent) => {
+  const file = e.dataTransfer?.files?.[0]
+  if (file) await processFile(file)
+}
+
+const switchToText = () => {
+  inputSource.value = 'text'
+  fileName.value = ''
+  input.value = ''
+}
 
 const copyToClipboard = async (text: string) => {
   try {
@@ -97,11 +130,53 @@ onMounted(() => {
           </button>
         </div>
         <div class="space-y-4">
+          <div v-if="mode === 'encode'" class="flex gap-2">
+            <button
+              type="button"
+              :class="cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
+                inputSource === 'text' && 'bg-mint/20 text-mint ring-1 ring-mint/30',
+                inputSource === 'file' && 'bg-gray-200/50 dark:bg-gray-600/50 text-gray-600 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-gray-500/50',
+              )"
+              @click="inputSource = 'text'; switchToText()"
+            >
+              Text
+            </button>
+            <button
+              type="button"
+              :class="cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
+                inputSource === 'file' && 'bg-mint/20 text-mint ring-1 ring-mint/30',
+                inputSource === 'text' && 'bg-gray-200/50 dark:bg-gray-600/50 text-gray-600 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-gray-500/50',
+              )"
+              @click="fileInputRef?.click()"
+            >
+              File
+            </button>
+            <input
+              ref="fileInputRef"
+              type="file"
+              class="hidden"
+              @change="onFileChange"
+            />
+          </div>
           <div>
             <label for="base64-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ mode === 'encode' ? 'Text to encode' : 'Base64 to decode' }}
+              {{ mode === 'encode' ? (inputSource === 'file' ? 'File (drop or click)' : 'Text to encode') : 'Base64 to decode' }}
             </label>
+            <div
+              v-if="mode === 'encode' && inputSource === 'file'"
+              class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-mint/50 transition-colors duration-200"
+              @click="fileInputRef?.click()"
+              @dragover.prevent
+              @drop.prevent="onDrop"
+            >
+              <DocumentArrowUpIcon class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-2" />
+              <p class="text-sm text-gray-600 dark:text-gray-400">Drop file here or click to browse</p>
+              <p v-if="fileName" class="mt-1 text-mint font-medium">{{ fileName }}</p>
+            </div>
             <textarea
+              v-else
               id="base64-input"
               v-model="input"
               rows="4"

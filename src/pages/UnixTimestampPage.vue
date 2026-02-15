@@ -25,11 +25,19 @@ const result = computed(() => {
       const ms = ts < 1e12 ? ts * 1000 : ts
       const date = new Date(ms)
       if (isNaN(date.getTime())) throw new Error('Invalid timestamp')
-      return date.toISOString()
+      return {
+        iso: date.toISOString(),
+        local: date.toLocaleString(),
+        rfc2822: date.toUTCString(),
+        ms: date.getTime().toString(),
+      }
     } else {
       const date = new Date(text)
       if (isNaN(date.getTime())) throw new Error('Invalid date')
-      return Math.floor(date.getTime() / 1000).toString()
+      return {
+        seconds: Math.floor(date.getTime() / 1000).toString(),
+        ms: date.getTime().toString(),
+      }
     }
   } catch (e) {
     error.value = mode.value === 'toDate' ? 'Invalid Unix timestamp' : 'Invalid date string'
@@ -124,27 +132,55 @@ onMounted(() => {
             />
             <p v-if="error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
           </div>
-          <div v-if="result" class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Result</label>
-            <div
-              :class="cn(
-                'flex items-center gap-2 p-4 rounded-lg font-mono text-sm',
-                'bg-white/60 dark:bg-gray-700/60 border border-gray-200/50 dark:border-gray-600/50',
-                'text-gray-800 dark:text-gray-200',
-              )"
-            >
-              <span class="flex-1 break-all">{{ result }}</span>
-              <button
-                @click="copyToClipboard(result)"
-                aria-label="Copy to clipboard"
-                :class="cn(
-                  'p-2 rounded-lg shrink-0 hover:bg-peach/20 transition-all duration-200',
-                  'transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-peach/50',
-                )"
-              >
-                <ClipboardDocumentIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </button>
-            </div>
+          <div v-if="result" class="space-y-4">
+            <template v-if="mode === 'toDate'">
+              <div v-for="(val, key) in result" :key="key" class="space-y-1">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ key === 'iso' ? 'ISO 8601' : key === 'local' ? 'Local' : key === 'rfc2822' ? 'RFC 2822' : 'Milliseconds' }}</label>
+                <div
+                  :class="cn(
+                    'flex items-center gap-2 p-4 rounded-lg font-mono text-sm',
+                    'bg-white/60 dark:bg-gray-700/60 border border-gray-200/50 dark:border-gray-600/50',
+                    'text-gray-800 dark:text-gray-200',
+                  )"
+                >
+                  <span class="flex-1 break-all">{{ val }}</span>
+                  <button
+                    @click="typeof val === 'string' && copyToClipboard(val)"
+                    :aria-label="`Copy ${key}`"
+                    :class="cn(
+                      'p-2 rounded-lg shrink-0 hover:bg-peach/20 transition-all duration-200',
+                      'transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-peach/50',
+                    )"
+                  >
+                    <ClipboardDocumentIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div v-for="(val, key) in result" :key="key" class="space-y-1">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ key === 'seconds' ? 'Seconds' : 'Milliseconds' }}</label>
+                <div
+                  :class="cn(
+                    'flex items-center gap-2 p-4 rounded-lg font-mono text-sm',
+                    'bg-white/60 dark:bg-gray-700/60 border border-gray-200/50 dark:border-gray-600/50',
+                    'text-gray-800 dark:text-gray-200',
+                  )"
+                >
+                  <span class="flex-1 break-all">{{ val }}</span>
+                  <button
+                    @click="typeof val === 'string' && copyToClipboard(val)"
+                    :aria-label="`Copy ${key}`"
+                    :class="cn(
+                      'p-2 rounded-lg shrink-0 hover:bg-peach/20 transition-all duration-200',
+                      'transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-peach/50',
+                    )"
+                  >
+                    <ClipboardDocumentIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>

@@ -11,13 +11,25 @@ const { success } = useToast()
 const router = useRouter()
 
 const uuids = ref<string[]>([])
+const count = ref(1)
 
 const generateUUID = (): string => {
   return crypto.randomUUID()
 }
 
 const generateNew = () => {
-  uuids.value = [generateUUID(), ...uuids.value]
+  const newUuids = Array.from({ length: count.value }, () => generateUUID())
+  uuids.value = [...newUuids, ...uuids.value]
+}
+
+const copyAll = async () => {
+  const text = uuids.value.join('\n')
+  try {
+    await navigator.clipboard.writeText(text)
+    success('Copied all to clipboard')
+  } catch {
+    success('Copied all to clipboard')
+  }
 }
 
 const copyToClipboard = async (text: string) => {
@@ -63,23 +75,49 @@ onMounted(() => {
       </div>
 
       <div class="tool-card p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div class="flex items-center gap-2">
             <HashtagIcon class="w-5 h-5 text-warm-pink" />
             <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Generator</h2>
           </div>
-          <button
-            @click="generateNew"
-            :class="cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
-              'bg-warm-pink/30 hover:bg-warm-pink/40 text-gray-800 dark:text-white',
-              'transition-all duration-200 transform hover:scale-105 active:scale-95',
-              'focus:outline-none focus:ring-2 focus:ring-warm-pink/50',
-            )"
-          >
-            <PlusIcon class="w-4 h-4" />
-            Generate
-          </button>
+          <div class="flex items-center gap-2">
+            <select
+              v-model.number="count"
+              :class="cn(
+                'px-3 py-2 rounded-lg text-sm border',
+                'bg-white/60 dark:bg-gray-700/60 border-gray-200/50 dark:border-gray-600/50',
+                'text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-warm-pink/50',
+              )"
+            >
+              <option :value="1">1</option>
+              <option :value="5">5</option>
+              <option :value="10">10</option>
+            </select>
+            <button
+              @click="generateNew"
+              :class="cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+                'bg-warm-pink/30 hover:bg-warm-pink/40 text-gray-800 dark:text-white',
+                'transition-all duration-200 transform hover:scale-105 active:scale-95',
+                'focus:outline-none focus:ring-2 focus:ring-warm-pink/50',
+              )"
+            >
+              <PlusIcon class="w-4 h-4" />
+              Generate
+            </button>
+            <button
+              v-if="uuids.length > 1"
+              @click="copyAll"
+              :class="cn(
+                'px-4 py-2 rounded-lg text-sm font-medium',
+                'bg-gray-200/50 dark:bg-gray-600/50 hover:bg-gray-300/50 dark:hover:bg-gray-500/50',
+                'text-gray-800 dark:text-gray-200 transition-all duration-200',
+                'focus:outline-none focus:ring-2 focus:ring-warm-pink/50',
+              )"
+            >
+              Copy all
+            </button>
+          </div>
         </div>
         <div class="space-y-3">
           <div

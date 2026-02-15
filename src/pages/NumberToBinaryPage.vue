@@ -10,49 +10,39 @@ const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const { success } = useToast()
 const router = useRouter()
 
-const ipv4Input = ref('')
-const ipv4Error = ref('')
+const numberInput = ref('')
+const numberError = ref('')
 const reverseMode = ref(false)
 
-const ipv4ToBinary = (ip: string): string | null => {
-  const octets = ip.trim().split('.')
-  if (octets.length !== 4) return null
-  const parts: string[] = []
-  for (const octet of octets) {
-    const num = parseInt(octet, 10)
-    if (isNaN(num) || num < 0 || num > 255) return null
-    parts.push(num.toString(2).padStart(8, '0'))
-  }
-  return parts.join('.')
+const numberToBinary = (input: string): string | null => {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const num = parseInt(trimmed, 10)
+  if (isNaN(num) || num < 0 || !Number.isInteger(Number(trimmed))) return null
+  return num.toString(2)
 }
 
-const binaryToIpv4 = (binary: string): string | null => {
-  const parts = binary.trim().split('.')
-  if (parts.length !== 4) return null
-  const octets: number[] = []
-  for (const part of parts) {
-    if (part.length !== 8 || !/^[01]+$/.test(part)) return null
-    const num = parseInt(part, 2)
-    if (num < 0 || num > 255) return null
-    octets.push(num)
-  }
-  return octets.join('.')
+const binaryToNumber = (input: string): string | null => {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  if (!/^[01]+$/.test(trimmed)) return null
+  return parseInt(trimmed, 2).toString(10)
 }
 
-const ipv4BinaryResult = computed(() => {
-  if (!ipv4Input.value.trim()) return null
-  ipv4Error.value = ''
+const binaryResult = computed(() => {
+  if (!numberInput.value.trim()) return null
+  numberError.value = ''
   if (reverseMode.value) {
-    const result = binaryToIpv4(ipv4Input.value)
+    const result = binaryToNumber(numberInput.value)
     if (result === null) {
-      ipv4Error.value = 'Invalid binary (e.g. 11000000.10101000.00000001.00000001)'
+      numberError.value = 'Invalid binary (enter 0s and 1s only, e.g. 101010)'
       return null
     }
-    return { type: 'ipv4' as const, value: result }
+    return { type: 'decimal' as const, value: result }
   } else {
-    const result = ipv4ToBinary(ipv4Input.value)
+    const result = numberToBinary(numberInput.value)
     if (result === null) {
-      ipv4Error.value = 'Invalid IPv4 address (e.g. 192.168.1.1)'
+      numberError.value = 'Invalid number (enter a non-negative integer, e.g. 42)'
       return null
     }
     return { type: 'binary' as const, value: result }
@@ -95,10 +85,10 @@ onMounted(() => {
       <!-- Header -->
       <div class="page-header mb-12">
         <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
-          IPv4 ↔ Binary
+          Number ↔ Binary
         </h1>
         <p class="text-base text-gray-600 dark:text-gray-400">
-          Convert between IPv4 addresses and 8-bit binary notation for each octet.
+          Convert between decimal numbers and binary notation.
         </p>
       </div>
 
@@ -119,7 +109,7 @@ onMounted(() => {
               )"
               @click="reverseMode = false"
             >
-              IPv4 → Binary
+              Decimal → Binary
             </button>
             <button
               type="button"
@@ -130,18 +120,18 @@ onMounted(() => {
               )"
               @click="reverseMode = true"
             >
-              Binary → IPv4
+              Binary → Decimal
             </button>
           </div>
           <div>
-            <label :for="reverseMode ? 'binary-input' : 'ipv4-input'" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ reverseMode ? 'Binary (8 bits per octet, dot-separated)' : 'IPv4 Address' }}
+            <label :for="reverseMode ? 'binary-input' : 'number-input'" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ reverseMode ? 'Binary (0s and 1s)' : 'Number (decimal)' }}
             </label>
             <input
-              :id="reverseMode ? 'binary-input' : 'ipv4-input'"
-              v-model="ipv4Input"
+              :id="reverseMode ? 'binary-input' : 'number-input'"
+              v-model="numberInput"
               type="text"
-              :placeholder="reverseMode ? '11000000.10101000.00000001.00000001' : '192.168.1.1'"
+              :placeholder="reverseMode ? '101010' : '42'"
               :class="cn(
                 'w-full px-4 py-3 rounded-lg border font-mono text-sm',
                 'bg-white/60 dark:bg-gray-700/60 border-gray-200/50 dark:border-gray-600/50',
@@ -150,11 +140,11 @@ onMounted(() => {
                 'transition-all duration-200',
               )"
             />
-            <p v-if="ipv4Error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ ipv4Error }}</p>
+            <p v-if="numberError" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ numberError }}</p>
           </div>
-          <div v-if="ipv4BinaryResult" class="space-y-2">
+          <div v-if="binaryResult" class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ ipv4BinaryResult.type === 'binary' ? 'Binary Result' : 'IPv4 Result' }}
+              {{ binaryResult.type === 'binary' ? 'Binary Result' : 'Decimal Result' }}
             </label>
             <div
               :class="cn(
@@ -163,9 +153,9 @@ onMounted(() => {
                 'text-gray-800 dark:text-gray-200',
               )"
             >
-              <span class="flex-1 break-all">{{ ipv4BinaryResult.value }}</span>
+              <span class="flex-1 break-all">{{ binaryResult.value }}</span>
               <button
-                @click="copyToClipboard(ipv4BinaryResult.value)"
+                @click="copyToClipboard(binaryResult.value)"
                 aria-label="Copy to clipboard"
                 :class="cn(
                   'p-2 rounded-lg shrink-0',
