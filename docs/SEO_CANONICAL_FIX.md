@@ -14,7 +14,7 @@ This document explains the changes made to fix the Google Search Console error.
 3. **Platform configs**:
    - **Vercel**: `vercel.json` has a host-based redirect. Prefer **Dashboard → Project → Settings → Domains**: add both `adenmgb.com` and `www.adenmgb.com`, set `adenmgb.com` as primary.
    - **Netlify**: `netlify.toml` and `public/_redirects`
-   - **Docker/nginx**: `Dockerfile` – nginx server block for www redirect
+   - **Docker/nginx**: Handle at edge (Cloudflare, load balancer). The container serves all hosts; redirects can cause NS_ERROR_UNKNOWN_HOST when origin hostname differs from public domain.
 
 ## If you use Cloudflare
 
