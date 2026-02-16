@@ -66,13 +66,14 @@ RUN mkdir -p /app/data/games /app/data/database && \
 
 # Create nginx configuration with API proxy
 # Redirect www to non-www (301) to fix "Duplicate, Google chose different canonical than user"
+# Main block must be default_server so adenmgb.com (and other hosts) don't hit the www redirect
 RUN printf 'server {\n\
     listen 80;\n\
     server_name www.adenmgb.com;\n\
     return 301 https://adenmgb.com$request_uri;\n\
 }\n\
 server {\n\
-    listen 80;\n\
+    listen 80 default_server;\n\
     server_name _;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
