@@ -1,0 +1,19 @@
+# Netlify configuration for adenmgb.com
+# Redirect www to non-www to fix "Duplicate, Google chose different canonical than user"
+[[redirects]]
+  from = "https://www.adenmgb.com/*"
+  to = "https://adenmgb.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.adenmgb.com/*"
+  to = "https://adenmgb.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://adenmgb.com/*"
+  to = "https://adenmgb.com/:splat"
+  status = 301
+  force = true

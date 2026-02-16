@@ -1,0 +1,4 @@
+# Netlify redirects - www to non-www (backup; netlify.toml has full config)
+https://www.adenmgb.com/*  https://adenmgb.com/:splat  301
+http://www.adenmgb.com/*   https://adenmgb.com/:splat  301
+http://adenmgb.com/*       https://adenmgb.com/:splat  301
