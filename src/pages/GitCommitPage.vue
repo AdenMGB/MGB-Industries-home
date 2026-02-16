@@ -6,6 +6,7 @@ import { cn } from '@/utils/cn'
 import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
 import { gitApi } from '@/api/git'
 import { parseGitUrl } from '@/utils/git-url'
+import GitShareLink from '@/components/GitShareLink.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -144,25 +145,28 @@ function goBack() {
 
       <div v-else-if="commit" class="commit-card space-y-6">
         <div class="p-6 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
-          <div class="flex items-start justify-between gap-4">
+          <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
               <p class="font-medium text-gray-800 dark:text-white text-lg">{{ commitMessage }}</p>
               <p class="text-sm text-gray-600 dark:text-gray-400">{{ authorName }} · {{ commitDate }}</p>
               <pre v-if="fullMessage !== commitMessage" class="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap mt-2 p-3 rounded-lg bg-gray-100/50 dark:bg-gray-700/50">{{ fullMessage }}</pre>
             </div>
-            <a
-              :href="commitUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              :class="cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
-                'text-soft-blue hover:bg-soft-blue/10 transition-colors duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-soft-blue/50',
-              )"
-            >
-              <ArrowTopRightOnSquareIcon class="w-5 h-5" />
-              View on {{ parsed?.provider ?? 'Git' }}
-            </a>
+            <div class="flex items-center gap-2">
+              <GitShareLink v-if="repoUrl && sha" />
+              <a
+                :href="commitUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                :class="cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
+                  'text-soft-blue hover:bg-soft-blue/10 transition-colors duration-200',
+                  'focus:outline-none focus:ring-2 focus:ring-soft-blue/50',
+                )"
+              >
+                <ArrowTopRightOnSquareIcon class="w-5 h-5" />
+                View on {{ parsed?.provider ?? 'Git' }}
+              </a>
+            </div>
           </div>
         </div>
 

@@ -3,18 +3,20 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
 import { ArrowsRightLeftIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import GitRepoInput from '@/components/GitRepoInput.vue'
+import GitEmbedSection from '@/components/GitEmbedSection.vue'
 import { gitApi } from '@/api/git'
 import { parseGitUrl } from '@/utils/git-url'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
+const route = useRoute()
 
-const repoUrl = ref('')
+const repoUrl = ref((route.query.url as string) ?? '')
 const branches = ref<Record<string, unknown>[]>([])
-const baseBranch = ref('')
-const headBranch = ref('')
+const baseBranch = ref((route.query.base as string) ?? '')
+const headBranch = ref((route.query.head as string) ?? '')
 const compareResult = ref<Record<string, unknown> | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -27,6 +29,20 @@ watch(repoUrl, () => {
   compareResult.value = null
   error.value = ''
 })
+
+watch(() => route.query.url, (url) => { if (url) repoUrl.value = url })
+watch(() => route.query.base, (b) => { if (b) baseBranch.value = b })
+watch(() => route.query.head, (h) => { if (h) headBranch.value = h })
+
+function syncUrl() {
+  const u = repoUrl.value.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')
+  if (!u || !baseBranch.value || !headBranch.value) return
+  router.replace({
+    path: route.path,
+    query: { url: u, base: baseBranch.value, head: headBranch.value },
+  })
+}
+watch([repoUrl, baseBranch, headBranch], syncUrl, { deep: true })
 
 async function loadBranches() {
   if (!repoInputRef.value?.validate()) return
@@ -117,7 +133,11 @@ function diffUrl(): string {
 
 const goBack = () => window.history.back()
 
-onMounted(() => {
+onMounted(async () => {
+  if (repoUrl.value && repoInputRef.value?.validate()) {
+    await loadBranches()
+    if (baseBranch.value && headBranch.value && branches.value.length) await compare()
+  }
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
   gsap.fromTo('.tool-card', { opacity: 0, y: 30, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, delay: 0.1, ease: premiumEase })
 })
@@ -148,9 +168,12 @@ onMounted(() => {
       </div>
 
       <div class="tool-card p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
-        <div class="flex items-center gap-2 mb-6">
-          <ArrowsRightLeftIcon class="w-5 h-5 text-soft-blue" />
-          <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Compare</h2>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-2">
+            <ArrowsRightLeftIcon class="w-5 h-5 text-soft-blue" />
+            <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Compare</h2>
+          </div>
+          <GitShareLink v-if="repoUrl.trim() && baseBranch && headBranch && compareResult" />
         </div>
         <div class="space-y-4">
           <GitRepoInput ref="repoInputRef" v-model="repoUrl" />
@@ -168,6 +191,13 @@ onMounted(() => {
             {{ loading ? 'Loading...' : 'Load Branches' }}
           </button>
           <p v-if="error && !branches.length" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+          <GitEmbedSection
+            v-if="repoUrl.trim() && baseBranch && headBranch"
+            :repo-url="repoUrl"
+            tool-path="/developer-tools/git-compare"
+            tool-label="Branch Compare"
+            :extra-params="{ base: baseBranch, head: headBranch }"
+          />
           <div v-if="branches.length" class="space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
               <div>

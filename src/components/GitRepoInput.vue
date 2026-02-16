@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { cn } from '@/utils/cn'
+
+const RECENT_KEY = 'git-tools-recent-repos'
+const RECENT_MAX = 5
 
 export interface ParsedRepo {
   provider: 'github' | 'gitlab'
@@ -17,7 +20,29 @@ function parseUrl(url: string): ParsedRepo | null {
   return null
 }
 
+function getRecentRepos(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY)
+    return raw ? (JSON.parse(raw) as string[]) : []
+  } catch {
+    return []
+  }
+}
+
+function addRecentRepo(repo: string) {
+  const normalized = repo.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')
+  if (!normalized || !parseUrl(normalized)) return
+  let recent = getRecentRepos().filter((r) => r !== normalized)
+  recent = [normalized, ...recent].slice(0, RECENT_MAX)
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recent))
+  } catch {
+    // ignore
+  }
+}
+
 const url = defineModel<string>({ default: '' })
+const recentRepos = ref<string[]>(getRecentRepos())
 const error = ref('')
 
 const parsed = computed(() => {
@@ -37,10 +62,27 @@ function validate() {
     error.value = 'Invalid URL. Use github.com/owner/repo or gitlab.com/owner/repo'
     return false
   }
+  addRecentRepo(url.value)
+  recentRepos.value = getRecentRepos()
   return true
 }
 
-defineExpose({ validate, parsed, isValid })
+function pickRecent(repo: string) {
+  url.value = repo
+}
+
+watch(url, (v) => {
+  if (v && parsed.value) recentRepos.value = getRecentRepos()
+})
+
+function addToRecent() {
+  if (url.value.trim() && parsed.value) {
+    addRecentRepo(url.value)
+    recentRepos.value = getRecentRepos()
+  }
+}
+
+defineExpose({ validate, parsed, isValid, addToRecent })
 </script>
 
 <template>
@@ -63,5 +105,20 @@ defineExpose({ validate, parsed, isValid })
     <p v-else-if="parsed" class="text-sm text-gray-500 dark:text-gray-400">
       {{ parsed.provider }} / {{ parsed.owner }} / {{ parsed.repo }}
     </p>
+    <div v-if="recentRepos.length" class="flex flex-wrap gap-2 mt-2">
+      <span class="text-xs text-gray-500 dark:text-gray-400">Recent:</span>
+      <button
+        v-for="r in recentRepos"
+        :key="r"
+        @click="pickRecent(r)"
+        :class="cn(
+          'px-2 py-1 rounded text-xs font-mono',
+          'bg-gray-200/60 dark:bg-gray-600/40 hover:bg-soft-blue/20',
+          'text-gray-700 dark:text-gray-300 transition-colors duration-200',
+        )"
+      >
+        {{ r }}
+      </button>
+    </div>
   </div>
 </template>

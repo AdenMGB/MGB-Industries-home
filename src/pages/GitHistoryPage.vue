@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
 import { ArrowLeftIcon, ClockIcon } from '@heroicons/vue/24/outline'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import GitRepoInput from '@/components/GitRepoInput.vue'
+import GitBranchSelect from '@/components/GitBranchSelect.vue'
+import GitEmbedSection from '@/components/GitEmbedSection.vue'
+import GitShareLink from '@/components/GitShareLink.vue'
 import { gitApi } from '@/api/git'
 
 const router = useRouter()
+const route = useRoute()
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
-const repoUrl = ref('')
+const repoUrl = ref((route.query.url as string) ?? '')
+const branch = ref((route.query.sha as string) ?? '')
 const commits = ref<Record<string, unknown>[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -31,6 +36,7 @@ async function loadCommits(reset = false) {
   const { data, error: err } = await gitApi.getCommits(repoUrl.value, {
     page: page.value,
     per_page: 30,
+    ...(branch.value && { sha: branch.value }),
   })
   loading.value = false
   if (err) {
@@ -109,7 +115,33 @@ function formatTimelineDate(c: Record<string, unknown>): string {
 
 const goBack = () => window.history.back()
 
-onMounted(() => {
+watch(
+  () => route.query.url,
+  (url) => { if (url) repoUrl.value = url },
+)
+watch(
+  () => route.query.sha,
+  (sha) => { if (sha) branch.value = sha },
+)
+
+function syncUrl() {
+  const u = repoUrl.value.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')
+  if (!u) return
+  const query: Record<string, string> = { url: u }
+  if (branch.value) query.sha = branch.value
+  router.replace({ path: route.path, query })
+}
+watch([repoUrl, branch], syncUrl, { deep: true })
+
+onMounted(async () => {
+  await nextTick()
+  if (repoUrl.value && repoInputRef.value) {
+    if (repoInputRef.value.validate()) {
+      loadCommits(true)
+    } else if (route.query.url && repoInputRef.value.parsed) {
+      repoInputRef.value.addToRecent?.()
+    }
+  }
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
   gsap.fromTo('.tool-card', { opacity: 0, y: 30, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, delay: 0.1, ease: premiumEase })
 })
@@ -140,12 +172,16 @@ onMounted(() => {
       </div>
 
       <div class="tool-card p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
-        <div class="flex items-center gap-2 mb-6">
-          <ClockIcon class="w-5 h-5 text-soft-blue" />
-          <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Timeline</h2>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-2">
+            <ClockIcon class="w-5 h-5 text-soft-blue" />
+            <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Timeline</h2>
+          </div>
+          <GitShareLink v-if="repoUrl.trim() && commits.length" />
         </div>
         <div class="space-y-4">
           <GitRepoInput ref="repoInputRef" v-model="repoUrl" />
+          <GitBranchSelect v-model="branch" :repo-url="repoUrl" label="Branch" />
           <button
             @click="onAnalyze"
             :disabled="loading"
@@ -160,6 +196,13 @@ onMounted(() => {
             {{ loading ? 'Loading...' : 'Load History' }}
           </button>
           <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+          <GitEmbedSection
+            v-if="repoUrl.trim()"
+            :repo-url="repoUrl"
+            tool-path="/developer-tools/git-history"
+            tool-label="Git History"
+            :extra-params="branch ? { sha: branch } : undefined"
+          />
 
           <!-- Timeline -->
           <div v-if="commits.length" class="relative">

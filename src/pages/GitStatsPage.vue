@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, nextTick, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
 import { ChartBarIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import GitRepoInput from '@/components/GitRepoInput.vue'
+import GitEmbedSection from '@/components/GitEmbedSection.vue'
+import GitShareLink from '@/components/GitShareLink.vue'
 import { gitApi } from '@/api/git'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
+const route = useRoute()
 
-const repoUrl = ref('')
+const repoUrl = ref((route.query.url as string) ?? '')
 const contributors = ref<Record<string, unknown>[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -46,7 +49,18 @@ function contributorAvatar(c: Record<string, unknown>): string {
 
 const goBack = () => router.push('/developer-tools')
 
-onMounted(() => {
+watch(() => route.query.url, (url) => { if (url) repoUrl.value = url })
+
+function syncUrl() {
+  const u = repoUrl.value.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')
+  if (!u) return
+  router.replace({ path: route.path, query: { url: u } })
+}
+watch(repoUrl, syncUrl, { deep: true })
+
+onMounted(async () => {
+  await nextTick()
+  if (repoUrl.value && repoInputRef.value?.validate()) loadStats()
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
   gsap.fromTo('.tool-card', { opacity: 0, y: 30, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, delay: 0.1, ease: premiumEase })
 })
@@ -77,9 +91,12 @@ onMounted(() => {
       </div>
 
       <div class="tool-card p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
-        <div class="flex items-center gap-2 mb-6">
-          <ChartBarIcon class="w-5 h-5 text-soft-blue" />
-          <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Stats</h2>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-2">
+            <ChartBarIcon class="w-5 h-5 text-soft-blue" />
+            <h2 class="text-xl font-light text-gray-800 dark:text-gray-200">Stats</h2>
+          </div>
+          <GitShareLink v-if="repoUrl.trim() && contributors.length" />
         </div>
         <div class="space-y-4">
           <GitRepoInput ref="repoInputRef" v-model="repoUrl" />
@@ -97,6 +114,12 @@ onMounted(() => {
             {{ loading ? 'Loading...' : 'Load Stats' }}
           </button>
           <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+          <GitEmbedSection
+            v-if="repoUrl.trim()"
+            :repo-url="repoUrl"
+            tool-path="/developer-tools/git-stats"
+            tool-label="Commit Stats"
+          />
           <div v-if="contributors.length" class="space-y-4">
             <div class="p-4 rounded-lg bg-soft-blue/10 dark:bg-soft-blue/5 border border-soft-blue/20">
               <p class="text-2xl font-light text-gray-800 dark:text-white">{{ totalCommits() }}</p>
