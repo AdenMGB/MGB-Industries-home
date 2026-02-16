@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 import { createJiti } from 'jiti'
 import type { DatabaseSync } from 'node:sqlite'
+import type { Migration } from '../types/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -39,9 +40,8 @@ export async function runMigrations(db: DatabaseSync): Promise<void> {
     console.log(`Running migration: ${migrationName}`)
     // Use jiti to load .ts files at runtime (Node doesn't natively support TS import)
     const migrationPath = `../migrations/${file}`
-    const migration = await jiti.import(migrationPath)
-
-    await migration.migration.up(db)
+    const mod = await jiti.import(migrationPath) as { migration: Migration }
+    await mod.migration.up(db)
     db.prepare('INSERT INTO migrations (name) VALUES (?)').run(migrationName)
   }
 }

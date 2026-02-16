@@ -259,6 +259,78 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/developer-tools/git-history',
+    name: 'GitHistory',
+    component: () => import('@/pages/GitHistoryPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Git History Visualizer',
+        description: 'View commit history with timeline and links to commits.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/git-commit',
+    name: 'GitCommit',
+    component: () => import('@/pages/GitCommitPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Git Commit',
+        description: 'View commit details and file diff.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/git-stats',
+    name: 'GitStats',
+    component: () => import('@/pages/GitStatsPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Git Commit Stats',
+        description: 'Total commits and per-author breakdown.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/git-search',
+    name: 'GitSearch',
+    component: () => import('@/pages/GitSearchPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Git Commit Search',
+        description: 'Search commits by author and date range.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/git-file-history',
+    name: 'GitFileHistory',
+    component: () => import('@/pages/GitFileHistoryPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Git File History',
+        description: 'View commits that modified a specific file.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/git-compare',
+    name: 'GitCompare',
+    component: () => import('@/pages/GitComparePage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Git Branch Compare',
+        description: 'Compare branches and view commits ahead.',
+      },
+    },
+  },
+  {
     path: '/games',
     name: 'Games',
     component: () => import('@/pages/GamesPage.vue'),

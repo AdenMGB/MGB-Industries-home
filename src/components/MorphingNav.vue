@@ -41,7 +41,7 @@ const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const toggleNav = () => {
   isOpen.value = !isOpen.value
 
-  if (isOpen.value) {
+  if (isOpen.value && backdropRef.value && navRef.value) {
     // Backdrop with blur animation
     gsap.fromTo(
       backdropRef.value,
@@ -73,7 +73,7 @@ const toggleNav = () => {
     )
 
     // Stagger nav items
-    const items = navRef.value?.querySelectorAll('a')
+    const items = navRef.value.querySelectorAll('a')
     if (items) {
       gsap.fromTo(
         items,
@@ -94,16 +94,20 @@ const toggleNav = () => {
       )
     }
   } else {
-    gsap.to(backdropRef.value, {
-      opacity: 0,
-      duration: 0.2,
-      ease: premiumEase,
-    })
-    gsap.to(navRef.value, {
-      x: '-100%',
-      duration: 0.3,
-      ease: premiumEase,
-    })
+    if (backdropRef.value) {
+      gsap.to(backdropRef.value, {
+        opacity: 0,
+        duration: 0.2,
+        ease: premiumEase,
+      })
+    }
+    if (navRef.value) {
+      gsap.to(navRef.value, {
+        x: '-100%',
+        duration: 0.3,
+        ease: premiumEase,
+      })
+    }
   }
 }
 
@@ -111,8 +115,8 @@ const navigate = (path: string) => {
   router.push(path)
   setTimeout(() => {
     isOpen.value = false
-    gsap.to(backdropRef.value, { opacity: 0, duration: 0.2 })
-    gsap.to(navRef.value, { x: '-100%', duration: 0.3 })
+    if (backdropRef.value) gsap.to(backdropRef.value, { opacity: 0, duration: 0.2 })
+    if (navRef.value) gsap.to(navRef.value, { x: '-100%', duration: 0.3 })
   }, 100)
 }
 

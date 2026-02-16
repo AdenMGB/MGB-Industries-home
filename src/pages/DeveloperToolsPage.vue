@@ -51,6 +51,17 @@ const categories = [
     ],
   },
   {
+    id: 'git',
+    title: 'Git',
+    tools: [
+      { name: 'History Visualizer', description: 'View commit history with timeline and links to commits.', path: '/developer-tools/git-history', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
+      { name: 'Commit Stats', description: 'Total commits and per-author breakdown.', path: '/developer-tools/git-stats', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
+      { name: 'Commit Search', description: 'Search commits by author and date range.', path: '/developer-tools/git-search', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
+      { name: 'File History', description: 'View commits that modified a specific file.', path: '/developer-tools/git-file-history', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
+      { name: 'Branch Compare', description: 'Compare branches and view commits ahead.', path: '/developer-tools/git-compare', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
+    ],
+  },
+  {
     id: 'utilities',
     title: 'Utilities',
     tools: [

@@ -181,7 +181,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       }
 
       const userWithoutPassword: UserWithoutPassword = {
-        id: user.id,
+        id: String(user.id),
         email: user.email,
         name: user.name,
         role: user.role as 'user' | 'admin',

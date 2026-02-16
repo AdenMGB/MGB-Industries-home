@@ -11,6 +11,7 @@ import { gameSaveRoutes } from './routes/gameSaves.js'
 import { gameListRoutes } from './routes/games.js'
 import { contactRoutes } from './routes/contact.js'
 import { seoRoutes } from './routes/seo.js'
+import { gitRoutes } from './routes/git.js'
 
 export async function createServer() {
   const fastify = Fastify({
@@ -46,6 +47,7 @@ export async function createServer() {
   await fastify.register(gameListRoutes)
   await fastify.register(contactRoutes)
   await fastify.register(seoRoutes)
+  await fastify.register(gitRoutes)
 
   return fastify
 }

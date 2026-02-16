@@ -14,7 +14,7 @@ const secret = new TextEncoder().encode(JWT_SECRET)
 const JWT_EXPIRATION = '7d'
 
 export async function signJWT(payload: JWTPayload): Promise<string> {
-  const jwt = await new SignJWT(payload)
+  const jwt = await new SignJWT({ ...payload } as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRATION)
@@ -25,5 +25,5 @@ export async function signJWT(payload: JWTPayload): Promise<string> {
 
 export async function verifyJWT(token: string): Promise<JWTPayload> {
   const { payload } = await jwtVerify(token, secret)
-  return payload as JWTPayload
+  return payload as unknown as JWTPayload
 }
