@@ -103,6 +103,18 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/developer-tools/conversion-trainer',
+    name: 'ConversionTrainer',
+    component: () => import('@/pages/ConversionTrainerPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Conversion Trainer',
+        description: 'Practice binary and hexadecimal conversion with calculator, reference table, and quiz games.',
+      },
+    },
+  },
+  {
     path: '/developer-tools/number-to-hex',
     name: 'NumberToHex',
     component: () => import('@/pages/NumberToHexPage.vue'),

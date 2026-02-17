@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
 import {
+  AcademicCapIcon,
   ArrowPathIcon,
   ArrowsRightLeftIcon,
   CodeBracketSquareIcon,
@@ -20,6 +21,13 @@ const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
 
 const categories = [
+  {
+    id: 'learn-practice',
+    title: 'Learn & Practice',
+    tools: [
+      { name: 'Conversion Trainer', description: 'Practice mental binary and hex conversion with calculator, reference table, and quiz games.', path: '/developer-tools/conversion-trainer', icon: AcademicCapIcon, accent: 'mint' },
+    ],
+  },
   {
     id: 'converters',
     title: 'Converters',
