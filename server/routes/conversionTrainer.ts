@@ -30,11 +30,26 @@ function xpToLevel(totalXp: number): number {
 export async function conversionTrainerRoutes(fastify: FastifyInstance) {
   const db = getDatabase()
 
-  // Submit score (authenticated)
+  // Submit score (authenticated) - only saves if new score beats user's best for this mode
   fastify.post('/api/conversion-trainer/scores', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const body = submitScoreSchema.parse(request.body)
       const { user } = request as { user: { userId: string } }
+
+      const existing = db
+        .prepare(
+          `SELECT MAX(score) as best_score FROM conversion_trainer_scores WHERE user_id = ? AND mode = ?`
+        )
+        .get(user.userId, body.mode) as { best_score: number | null } | undefined
+
+      const currentBest = existing?.best_score ?? -1
+      if (body.score <= currentBest) {
+        return reply.send({ message: 'Score not improved (not saved)' })
+      }
+
+      db.prepare(
+        `DELETE FROM conversion_trainer_scores WHERE user_id = ? AND mode = ?`
+      ).run(user.userId, body.mode)
 
       db.prepare(`
         INSERT INTO conversion_trainer_scores (user_id, mode, score, metadata)
