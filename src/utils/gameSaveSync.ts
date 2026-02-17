@@ -10,7 +10,52 @@ let lastSaveTime = 0
 let debounceTimer: number | null = null
 
 /**
+ * Fetch save data from backend (for pre-load injection before game starts)
+ */
+export async function fetchSaveData(gameId: string): Promise<Record<string, unknown>> {
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated.value) return {}
+
+  try {
+    const response = await api.getGameSave(gameId)
+    return response.data?.saveData || {}
+  } catch (error) {
+    if (error instanceof Error && !error.message.includes('404')) {
+      console.warn('Failed to fetch save data:', error)
+    }
+    return {}
+  }
+}
+
+/**
+ * Inject pre-fetched save data into iframe localStorage (iframe must be same-origin)
+ */
+export function injectSaveDataIntoIframe(iframe: HTMLIFrameElement, saveData: Record<string, unknown>): void {
+  if (Object.keys(saveData).length === 0) return
+
+  try {
+    const iframeWindow = iframe.contentWindow
+    if (!iframeWindow?.localStorage) return
+
+    for (const [key, value] of Object.entries(saveData)) {
+      if (key === 'auth_token') continue
+      try {
+        const valueToStore = typeof value === 'object' && value !== null
+          ? JSON.stringify(value)
+          : String(value)
+        iframeWindow.localStorage.setItem(key, valueToStore)
+      } catch (e) {
+        console.warn('Failed to set localStorage item:', key, e)
+      }
+    }
+  } catch (error) {
+    console.warn('Cannot inject save data into iframe:', error)
+  }
+}
+
+/**
  * Load save data and inject it into iframe before game initializes
+ * @deprecated Prefer fetchSaveData + injectSaveDataIntoIframe for authenticated users to avoid race
  */
 export async function loadAndInjectSaveData(gameId: string, iframe: HTMLIFrameElement): Promise<void> {
   const { isAuthenticated } = useAuth()

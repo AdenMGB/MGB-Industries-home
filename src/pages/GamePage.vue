@@ -14,7 +14,7 @@ import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { useAuth } from '@/composables/useAuth'
-import { loadAndInjectSaveData, setupPostMessageSync, forceSaveGame } from '@/utils/gameSaveSync'
+import { fetchSaveData, injectSaveDataIntoIframe, setupPostMessageSync, forceSaveGame } from '@/utils/gameSaveSync'
 import { api } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { setMeta } from '@/composables/useMeta'
@@ -55,6 +55,16 @@ const isFullscreen = ref(false)
 const isFavorite = ref(false)
 const isTogglingFavorite = ref(false)
 let cleanupSync: (() => void) | null = null
+
+// For authenticated: defer game load until cloud save is fetched and injected
+const gameIframeSrc = ref<string | null>(null)
+const iframeSrcdoc = ref<string | undefined>(undefined)
+const BLANK_SRCDOC = '<html><body></body></html>'
+
+const effectiveGameSrc = computed(() => {
+  if (!isAuthenticated.value) return `/games/${gameHref.value}`
+  return gameIframeSrc.value ?? ''
+})
 
 const toggleFavorite = async () => {
   if (!isAuthenticated.value || isTogglingFavorite.value) return
@@ -154,30 +164,39 @@ onMounted(async () => {
     }
   }
 
-  // Set up save sync if authenticated
+  // Set up game loading - for authenticated users, fetch cloud save BEFORE loading game
   if (isAuthenticated.value && iframeRef.value) {
-    // Load and inject save data before game initializes
-    iframeRef.value.addEventListener('load', async () => {
-      if (iframeRef.value) {
-        // Inject save data as soon as iframe loads
-        await loadAndInjectSaveData(gameId.value, iframeRef.value)
-        
-        // Set up sync for future saves
+    let hasInjectedSave = false
+
+    const handleIframeLoad = () => {
+      if (!iframeRef.value) return
+
+      if (!hasInjectedSave) {
+        // Phase 1: blank srcdoc just loaded - inject save data, then load game
+        injectSaveDataIntoIframe(iframeRef.value, savedData)
+        hasInjectedSave = true
+        gameIframeSrc.value = `/games/${gameHref.value}`
+        iframeSrcdoc.value = undefined
+      } else {
+        // Phase 2: game loaded - set up sync and hide loading
         cleanupSync = setupPostMessageSync(gameId.value, iframeRef.value)
-        
-        // Hide loading indicator
         isLoading.value = false
       }
-    }, { once: true })
+    }
 
-    // Also set up sync immediately (in case iframe already loaded)
-    if (iframeRef.value.contentDocument?.readyState === 'complete') {
-      await loadAndInjectSaveData(gameId.value, iframeRef.value)
-      cleanupSync = setupPostMessageSync(gameId.value, iframeRef.value)
+    iframeRef.value.addEventListener('load', handleIframeLoad)
+
+    // Fetch cloud save first, then load blank iframe to inject before game starts
+    const savedData = await fetchSaveData(gameId.value)
+    iframeSrcdoc.value = BLANK_SRCDOC
+  } else {
+    // Not authenticated - load game directly (effectiveGameSrc already has game URL)
+    iframeRef.value?.addEventListener('load', () => {
+      isLoading.value = false
+    }, { once: true })
+    if (iframeRef.value?.contentDocument?.readyState === 'complete') {
       isLoading.value = false
     }
-  } else {
-    isLoading.value = false
   }
 })
 
@@ -336,11 +355,11 @@ onUnmounted(() => {
 
           <iframe
             ref="iframeRef"
-            :src="`/games/${gameHref}`"
+            :src="effectiveGameSrc"
+            :srcdoc="iframeSrcdoc"
             class="w-full h-full border-0"
             frameborder="0"
             allowfullscreen
-            @load="isLoading = false"
           />
         </div>
       </div>
