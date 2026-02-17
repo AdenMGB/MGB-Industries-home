@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bars3Icon,
@@ -39,67 +39,19 @@ const navItems = [
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 const toggleNav = () => {
-  isOpen.value = !isOpen.value
-
-  if (isOpen.value && backdropRef.value && navRef.value) {
-    // Backdrop with blur animation
-    gsap.fromTo(
-      backdropRef.value,
-      {
-        opacity: 0,
-        backdropFilter: 'blur(0px)',
-      },
-      {
-        opacity: 1,
-        backdropFilter: 'blur(20px)',
-        duration: 0.3,
-        ease: premiumEase,
-      },
-    )
-
-    // Slide menu with scale
-    gsap.fromTo(
-      navRef.value,
-      {
-        x: '-100%',
-        scale: 0.95,
-      },
-      {
-        x: '0%',
-        scale: 1,
-        duration: 0.4,
-        ease: premiumEase,
-      },
-    )
-
-    // Stagger nav items
-    const items = navRef.value.querySelectorAll('a')
-    if (items) {
-      gsap.fromTo(
-        items,
-        {
-          opacity: 0,
-          x: -20,
-          scale: 0.9,
-        },
-        {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-          duration: 0.3,
-          stagger: 0.05,
-          delay: 0.1,
-          ease: premiumEase,
-        },
-      )
-    }
-  } else {
+  if (isOpen.value) {
+    // Closing: animate first, then update state so backdrop stays during animation
     if (backdropRef.value) {
       gsap.to(backdropRef.value, {
         opacity: 0,
         duration: 0.2,
         ease: premiumEase,
+        onComplete: () => {
+          isOpen.value = false
+        },
       })
+    } else {
+      isOpen.value = false
     }
     if (navRef.value) {
       gsap.to(navRef.value, {
@@ -108,16 +60,88 @@ const toggleNav = () => {
         ease: premiumEase,
       })
     }
+  } else {
+    // Opening: set state first, then animate after nextTick (backdrop needs to be in DOM)
+    isOpen.value = true
+    nextTick(() => {
+      if (backdropRef.value && navRef.value) {
+        // Backdrop with blur animation
+        gsap.fromTo(
+          backdropRef.value,
+          {
+            opacity: 0,
+            backdropFilter: 'blur(0px)',
+          },
+          {
+            opacity: 1,
+            backdropFilter: 'blur(20px)',
+            duration: 0.3,
+            ease: premiumEase,
+          },
+        )
+
+        // Slide menu with scale
+        gsap.fromTo(
+          navRef.value,
+          {
+            x: '-100%',
+            scale: 0.95,
+          },
+          {
+            x: '0%',
+            scale: 1,
+            duration: 0.4,
+            ease: premiumEase,
+          },
+        )
+
+        // Stagger nav items
+        const items = navRef.value.querySelectorAll('a')
+        if (items) {
+          gsap.fromTo(
+            items,
+            {
+              opacity: 0,
+              x: -20,
+              scale: 0.9,
+            },
+            {
+              opacity: 1,
+              x: 0,
+              scale: 1,
+              duration: 0.3,
+              stagger: 0.05,
+              delay: 0.1,
+              ease: premiumEase,
+            },
+          )
+        }
+      }
+    })
+  }
+}
+
+const closeNav = () => {
+  if (backdropRef.value) {
+    gsap.to(backdropRef.value, {
+      opacity: 0,
+      duration: 0.2,
+      ease: premiumEase,
+      onComplete: () => {
+        isOpen.value = false
+      },
+    })
+  } else {
+    isOpen.value = false
+  }
+  if (navRef.value) {
+    gsap.to(navRef.value, { x: '-100%', duration: 0.3, ease: premiumEase })
   }
 }
 
 const navigate = (path: string) => {
   router.push(path)
-  setTimeout(() => {
-    isOpen.value = false
-    if (backdropRef.value) gsap.to(backdropRef.value, { opacity: 0, duration: 0.2 })
-    if (navRef.value) gsap.to(navRef.value, { x: '-100%', duration: 0.3 })
-  }, 100)
+  setTimeout(closeNav, 100)
 }
 
 const handleLogout = () => {
@@ -388,6 +412,7 @@ onUnmounted(() => {
     <div
       ref="navRef"
       class="fixed top-0 left-0 h-full w-72 z-50 bg-cream/95 dark:bg-gray-900/98 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 shadow-xl p-8 md:hidden transform-gpu"
+      :style="!isOpen ? { transform: 'translateX(-100%)' } : undefined"
     >
       <div class="flex flex-col gap-2 mt-16">
         <router-link
