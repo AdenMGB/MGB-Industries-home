@@ -19,6 +19,7 @@ import {
   CheckIcon,
   ChatBubbleLeftRightIcon,
   ClipboardDocumentIcon,
+  TrophyIcon,
 } from '@heroicons/vue/24/outline'
 import type { UserWithoutPassword } from '../../server/types/index.js'
 
@@ -58,6 +59,27 @@ const actionResult = ref<{
   data?: any
 } | null>(null)
 
+// Conversion Trainer scores (admin)
+type ConversionScore = {
+  id: number
+  userId: string
+  userName: string
+  userEmail: string
+  mode: string
+  conv: string
+  score: number
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}
+const conversionScores = ref<ConversionScore[]>([])
+const conversionScoresLoading = ref(false)
+const conversionScoresError = ref('')
+const conversionScoresFilter = ref({ mode: '', conv: '' })
+const isEditScoreModalOpen = ref(false)
+const isDeleteScoreModalOpen = ref(false)
+const selectedScore = ref<ConversionScore | null>(null)
+const editScoreForm = ref({ score: 0 })
+
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 const userStats = computed(() => {
@@ -67,10 +89,73 @@ const userStats = computed(() => {
   return { total, admins, regularUsers }
 })
 
+async function loadConversionScores() {
+  conversionScoresLoading.value = true
+  conversionScoresError.value = ''
+  try {
+    const res = await api.getAdminConversionScores({
+      mode: conversionScoresFilter.value.mode || undefined,
+      conv: conversionScoresFilter.value.conv || undefined,
+      limit: 100,
+    })
+    if (res.data) conversionScores.value = res.data.scores
+    else if (res.error) conversionScoresError.value = res.error
+  } catch (err) {
+    conversionScoresError.value = err instanceof Error ? err.message : 'Failed to load scores'
+  } finally {
+    conversionScoresLoading.value = false
+  }
+}
+
+function openEditScoreModal(score: ConversionScore) {
+  selectedScore.value = score
+  editScoreForm.value = { score: score.score }
+  isEditScoreModalOpen.value = true
+}
+
+function openDeleteScoreModal(score: ConversionScore) {
+  selectedScore.value = score
+  isDeleteScoreModalOpen.value = true
+}
+
+async function handleUpdateScore() {
+  if (!selectedScore.value) return
+  try {
+    const res = await api.updateAdminConversionScore(selectedScore.value.id, editScoreForm.value.score)
+    if (res.error) {
+      actionResult.value = { type: 'error', message: res.error }
+    } else {
+      actionResult.value = { type: 'success', message: 'Score updated' }
+      selectedScore.value.score = editScoreForm.value.score
+      isEditScoreModalOpen.value = false
+    }
+  } catch (err) {
+    actionResult.value = { type: 'error', message: err instanceof Error ? err.message : 'Failed to update' }
+  }
+}
+
+async function handleDeleteScore() {
+  if (!selectedScore.value) return
+  try {
+    const res = await api.deleteAdminConversionScore(selectedScore.value.id)
+    if (res.error) {
+      actionResult.value = { type: 'error', message: res.error }
+    } else {
+      actionResult.value = { type: 'success', message: 'Score deleted' }
+      conversionScores.value = conversionScores.value.filter((s) => s.id !== selectedScore.value!.id)
+      isDeleteScoreModalOpen.value = false
+      selectedScore.value = null
+    }
+  } catch (err) {
+    actionResult.value = { type: 'error', message: err instanceof Error ? err.message : 'Failed to delete' }
+  }
+}
+
 onMounted(async () => {
-  // Start loading users and contact messages immediately (non-blocking)
+  // Start loading users, contact messages, conversion scores (non-blocking)
   loadUsers()
   loadContactMessages()
+  loadConversionScores()
 
   // Check auth in parallel
   await checkAuth()
@@ -218,7 +303,10 @@ function closeModals() {
   isResetPasswordModalOpen.value = false
   isResetLinkModalOpen.value = false
   isDeleteModalOpen.value = false
+  isEditScoreModalOpen.value = false
+  isDeleteScoreModalOpen.value = false
   selectedUser.value = null
+  selectedScore.value = null
   actionResult.value = null
 }
 
@@ -470,6 +558,106 @@ function copyToClipboard(text: string) {
           class="text-center py-12"
         >
           <p class="text-gray-600 dark:text-gray-400">No contact messages yet</p>
+        </div>
+      </div>
+
+      <!-- Conversion Trainer Scores -->
+      <div class="card p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 mb-8">
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+          <TrophyIcon class="w-6 h-6 text-amber-500" />
+          Conversion Trainer Scores
+        </h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Edit or remove leaderboard scores. Scores are tied to sessions to prevent tampering.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <select
+            v-model="conversionScoresFilter.mode"
+            @change="loadConversionScores"
+            class="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm"
+          >
+            <option value="">All modes</option>
+            <option value="speed-round">Speed Round</option>
+            <option value="survival">Survival</option>
+            <option value="streak-challenge">Streak Challenge</option>
+            <option value="nibble-sprint">Nibble Sprint</option>
+          </select>
+          <select
+            v-model="conversionScoresFilter.conv"
+            @change="loadConversionScores"
+            class="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm"
+          >
+            <option value="">All types</option>
+            <option value="binary-standalone">Binary</option>
+            <option value="hex-standalone">Hex</option>
+            <option value="ipv4-full">IPv4</option>
+            <option value="ipv6-hextet">IPv6</option>
+          </select>
+          <button
+            @click="loadConversionScores"
+            class="px-3 py-2 rounded-lg bg-mint/30 hover:bg-mint/50 text-emerald-800 dark:text-emerald-200 text-sm font-medium transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+        <div v-if="conversionScoresError" class="p-4 rounded-lg mb-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm">
+          {{ conversionScoresError }}
+        </div>
+        <div v-if="conversionScoresLoading" class="text-center py-12 text-gray-600 dark:text-gray-400">
+          Loading scores...
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-600">
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">ID</th>
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">User</th>
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">Mode</th>
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">Type</th>
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">Score</th>
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">Date</th>
+                <th class="text-left py-3 px-2 font-medium text-gray-700 dark:text-gray-300">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="s in conversionScores"
+                :key="s.id"
+                class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/30"
+              >
+                <td class="py-3 px-2 font-mono text-gray-600 dark:text-gray-400">{{ s.id }}</td>
+                <td class="py-3 px-2">
+                  <span class="font-medium text-gray-800 dark:text-white">{{ s.userName }}</span>
+                  <span class="block text-xs text-gray-500">{{ s.userEmail }}</span>
+                </td>
+                <td class="py-3 px-2 text-gray-700 dark:text-gray-300">{{ s.mode }}</td>
+                <td class="py-3 px-2 text-gray-700 dark:text-gray-300">{{ s.conv }}</td>
+                <td class="py-3 px-2 font-semibold text-emerald-600 dark:text-emerald-400">{{ s.score }}</td>
+                <td class="py-3 px-2 text-gray-500 dark:text-gray-400">{{ new Date(s.createdAt).toLocaleString() }}</td>
+                <td class="py-3 px-2">
+                  <div class="flex gap-2">
+                    <button
+                      @click="openEditScoreModal(s)"
+                      class="p-1.5 rounded-lg bg-peach/20 hover:bg-peach/30 text-gray-700 dark:text-gray-200 transition-colors"
+                      title="Edit score"
+                    >
+                      <PencilIcon class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="openDeleteScoreModal(s)"
+                      class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 transition-colors"
+                      title="Delete score"
+                    >
+                      <TrashIcon class="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-if="!conversionScoresLoading && conversionScores.length === 0" class="text-center py-12 text-gray-600 dark:text-gray-400">
+          No scores found
         </div>
       </div>
 
@@ -913,6 +1101,84 @@ function copyToClipboard(text: string) {
               Cancel
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Score Modal -->
+    <div
+      v-if="isEditScoreModalOpen && selectedScore"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @click.self="closeModals"
+    >
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="closeModals" />
+      <div class="relative w-full max-w-md rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-2xl font-semibold text-gray-800 dark:text-white">Edit Score</h3>
+          <button @click="closeModals" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <XMarkIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {{ selectedScore.userName }} · {{ selectedScore.mode }} · {{ selectedScore.conv }}
+        </p>
+        <form @submit.prevent="handleUpdateScore" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Score</label>
+            <input
+              v-model.number="editScoreForm.score"
+              type="number"
+              min="0"
+              required
+              class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-peach/50"
+            />
+          </div>
+          <div v-if="actionResult" :class="cn('p-3 rounded-lg text-sm', actionResult.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400')">
+            {{ actionResult.message }}
+          </div>
+          <div class="flex items-center gap-3 pt-4">
+            <button type="submit" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-peach/30 hover:bg-peach/40 text-gray-800 dark:text-white transition-all duration-200">
+              Update Score
+            </button>
+            <button type="button" @click="closeModals" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Score Modal -->
+    <div
+      v-if="isDeleteScoreModalOpen && selectedScore"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @click.self="closeModals"
+    >
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="closeModals" />
+      <div class="relative w-full max-w-md rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-2xl font-semibold text-gray-800 dark:text-white">Delete Score</h3>
+          <button @click="closeModals" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <XMarkIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">
+          Remove score of <strong>{{ selectedScore.score }}</strong> by {{ selectedScore.userName }} ({{ selectedScore.mode }})?
+        </p>
+        <div v-if="actionResult" :class="cn('p-3 rounded-lg text-sm mb-4', actionResult.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400')">
+          {{ actionResult.message }}
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            @click="handleDeleteScore"
+            :disabled="actionResult?.type === 'success'"
+            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-400 transition-all duration-200 disabled:opacity-50"
+          >
+            Delete Score
+          </button>
+          <button @click="closeModals" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors">
+            Cancel
+          </button>
         </div>
       </div>
     </div>

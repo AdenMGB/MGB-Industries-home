@@ -27,6 +27,7 @@ import {
   decimalToBinary,
   decimalToHex,
   ipv4ToBinary,
+  decimalToIpv6Hextet,
 } from '@/utils/numberConversion'
 import confetti from 'canvas-confetti'
 import { useAuth } from '@/composables/useAuth'
@@ -40,8 +41,8 @@ const { isAuthenticated } = useAuth()
 type TabId = 'calculator' | 'table' | 'learn' | 'practice'
 const VALID_TABS = ['calculator', 'table', 'learn', 'practice'] as const
 const VALID_GAMES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint'] as const
-const VALID_CONV = ['binary-standalone', 'binary-octet', 'hex-standalone', 'hex-octet', 'ipv4-full'] as const
-const VALID_LB_MODES = ['speed-round', 'survival', 'streak-challenge', 'nibble-sprint'] as const
+const VALID_CONV = ['binary-standalone', 'binary-octet', 'hex-standalone', 'hex-octet', 'ipv4-full', 'ipv6-hextet'] as const
+const VALID_LB_MODES = ['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'daily-streak'] as const
 
 function parseFromQuery<T>(q: Record<string, unknown>, key: string, valid: readonly T[]): T | null {
   const v = q[key]
@@ -59,6 +60,7 @@ type ConversionType =
   | 'hex-standalone'
   | 'hex-octet'
   | 'ipv4-full'
+  | 'ipv6-hextet'
 
 type GameType = 'classic' | 'speed-round' | 'survival' | 'streak-challenge' | 'nibble-sprint'
 
@@ -131,12 +133,14 @@ const timerInterval = ref<number | null>(null)
 const lives = ref(3)
 const gameOver = ref(false)
 const gameStarted = ref(false)
+const gameSessionId = ref<string | null>(null)
 
 // Power-of-2 table for binary conversion (bit 7 → bit 0)
 const powerTable = [128, 64, 32, 16, 8, 4, 2, 1]
 
 const boxCount = computed(() => {
   if (gameType.value === 'nibble-sprint') return 4
+  if (conversionType.value === 'ipv6-hextet') return 4
   if (conversionType.value.includes('hex')) return 2
   return 8
 })
@@ -162,7 +166,7 @@ function triggerOverflowError() {
 function handleBoxInput(index: number, raw: string) {
   // Paste only - typing is handled in keydown for reliable overwrite
   if (overflowError.value) clearOverflowError()
-  const isHex = conversionType.value.includes('hex')
+  const isHex = conversionType.value.includes('hex') || conversionType.value === 'ipv6-hextet'
   let valid = isHex
     ? raw.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
     : raw.replace(/[^01]/g, '')
@@ -222,7 +226,7 @@ function handleBoxKeydown(index: number, e: KeyboardEvent) {
   // Handle character input - always overwrite (even when box has value)
   if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault()
-    const isHex = conversionType.value.includes('hex')
+    const isHex = conversionType.value.includes('hex') || conversionType.value === 'ipv6-hextet'
     let valid = isHex
       ? e.key.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
       : e.key.replace(/[^01]/g, '')
@@ -294,6 +298,8 @@ const progress = ref<{
   totalXp: number
   level: number
   bestStreak: number
+  bestClassicStreak: number
+  dailyStreak: number
   bestSpeedRound: number
   bestSurvival: number
   bestNibbleSprint: number
@@ -301,6 +307,7 @@ const progress = ref<{
 const unlockedAchievements = ref<Set<string>>(new Set())
 const leaderboard = ref<Array<{ rank: number; userName: string; score: number; createdAt: string }>>([])
 const leaderboardMode = ref(parseFromQuery(route.query as Record<string, unknown>, 'lbMode', VALID_LB_MODES) ?? 'speed-round')
+const leaderboardConv = ref<ConversionType>(parseFromQuery(route.query as Record<string, unknown>, 'lbConv', VALID_CONV) ?? 'binary-standalone')
 const leaderboardLoading = ref(false)
 const leaderboardFullscreen = ref(route.query.lb === '1')
 
@@ -384,6 +391,7 @@ const conversionTypes = [
   { id: 'hex-standalone' as ConversionType, label: 'Hex', desc: 'Decimal → Hex (0–255)' },
   { id: 'hex-octet' as ConversionType, label: 'Hex (octet)', desc: 'Octet to hex' },
   { id: 'ipv4-full' as ConversionType, label: 'IPv4 → Binary', desc: 'Full IP to binary' },
+  { id: 'ipv6-hextet' as ConversionType, label: 'IPv6 → Hex', desc: 'Decimal → Hex hextet (0–65535)' },
 ]
 
 const gameTypes = [
@@ -433,8 +441,9 @@ function generatePracticeQuestion(): void {
   overflowError.value = false
 
   const isNibble = gameType.value === 'nibble-sprint'
-  const maxVal = isNibble ? 15 : 255
-  const minVal = isNibble ? 0 : 0
+  const isIpv6Hextet = conversionType.value === 'ipv6-hextet'
+  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : 255
+  const minVal = 0
 
   if (conversionType.value === 'ipv4-full' && !isNibble) {
     const octets = [
@@ -460,6 +469,12 @@ function generatePracticeQuestion(): void {
       value: decimalStr,
       answer: decimalToBinary(dec, bits),
     }
+  } else if (isIpv6Hextet) {
+    const hextetVal = randomInt(0, 65535)
+    const answer = decimalToIpv6Hextet(hextetVal)
+    if (answer) {
+      practiceQuestion.value = { value: hextetVal.toString(), answer }
+    }
   } else {
     const hex = decimalToHex(dec).toUpperCase().padStart(2, '0')
     practiceQuestion.value = { value: decimalStr, answer: hex }
@@ -474,6 +489,10 @@ function normalizeAnswer(input: string, mode: ConversionType): string {
   if (mode === 'hex-standalone' || mode === 'hex-octet') {
     const cleaned = trimmed.startsWith('0x') ? trimmed.slice(2) : trimmed
     return cleaned.toUpperCase().padStart(2, '0')
+  }
+  if (mode === 'ipv6-hextet') {
+    const cleaned = trimmed.startsWith('0x') ? trimmed.slice(2) : trimmed
+    return cleaned.toUpperCase().padStart(4, '0')
   }
   return trimmed
 }
@@ -503,14 +522,15 @@ function startTimer(seconds: number) {
 function endTimedGame() {
   const score = practiceCorrect.value
   const mode = gameType.value
-  if (isAuthenticated.value) {
-    api.submitConversionScore(mode, score, {
+  if (isAuthenticated.value && gameSessionId.value) {
+    api.submitConversionScore(gameSessionId.value, mode, score, {
       correct: practiceCorrect.value,
       total: practiceTotal.value,
       timeSeconds: mode === 'speed-round' ? 60 : 30,
-    })
+    }, conversionType.value)
     api.updateConversionProgress({
       xpEarned: practiceCorrect.value * 10 + practiceStreak.value * 5,
+      recordPlayed: true,
       ...(mode === 'speed-round' && { bestSpeedRound: Math.max(progress.value?.bestSpeedRound ?? 0, score) }),
       ...(mode === 'nibble-sprint' && { bestNibbleSprint: Math.max(progress.value?.bestNibbleSprint ?? 0, score) }),
     })
@@ -561,6 +581,8 @@ function checkPracticeAnswer(): void {
       api.updateConversionProgress({
         xpEarned: 10 + practiceStreak.value * 5,
         bestStreak: Math.max(progress.value?.bestStreak ?? 0, practiceStreak.value),
+        ...(gameType.value === 'classic' && { bestClassicStreak: Math.max(progress.value?.bestClassicStreak ?? 0, practiceStreak.value) }),
+        recordPlayed: true,
       })
     }
     checkAchievements()
@@ -574,15 +596,19 @@ function checkPracticeAnswer(): void {
     practiceStreak.value = 0
     practiceFeedback.value = 'incorrect'
     nextTick(() => animateIncorrect())
+    if (isAuthenticated.value && gameType.value === 'classic' && practiceTotal.value === 1) {
+      api.updateConversionProgress({ recordPlayed: true })
+    }
 
     if (gameType.value === 'survival') {
       lives.value--
       if (lives.value <= 0) {
         gameOver.value = true
-        if (isAuthenticated.value) {
-          api.submitConversionScore('survival', practiceCorrect.value, { correct: practiceCorrect.value, total: practiceTotal.value })
+        if (isAuthenticated.value && gameSessionId.value) {
+          api.submitConversionScore(gameSessionId.value, 'survival', practiceCorrect.value, { correct: practiceCorrect.value, total: practiceTotal.value }, conversionType.value)
           api.updateConversionProgress({
             xpEarned: practiceCorrect.value * 10,
+            recordPlayed: true,
             bestSurvival: Math.max(progress.value?.bestSurvival ?? 0, practiceCorrect.value),
           })
           checkAchievements()
@@ -606,7 +632,7 @@ function revealAnswer(): void {
   showAnswer.value = true
 }
 
-function startGame() {
+async function startGame() {
   practiceCorrect.value = 0
   practiceTotal.value = 0
   practiceStreak.value = 0
@@ -614,7 +640,16 @@ function startGame() {
   lives.value = 3
   gameOver.value = false
   gameStarted.value = true
+  gameSessionId.value = null
   generatePracticeQuestion()
+  if (isAuthenticated.value) {
+    api.updateConversionProgress({ recordPlayed: true })
+    // Get session for score submission (anti-cheat)
+    if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint'].includes(gameType.value)) {
+      const res = await api.startConversionSession(gameType.value, conversionType.value)
+      if (res.data) gameSessionId.value = res.data.sessionId
+    }
+  }
 
   if (gameType.value === 'speed-round') {
     startTimer(60)
@@ -624,9 +659,12 @@ function startGame() {
 }
 
 function endStreakChallenge() {
-  if (isAuthenticated.value && bestStreakThisSession.value > 0) {
-    api.submitConversionScore('streak-challenge', bestStreakThisSession.value, { streak: bestStreakThisSession.value })
-    api.updateConversionProgress({ bestStreak: Math.max(progress.value?.bestStreak ?? 0, bestStreakThisSession.value) })
+  if (isAuthenticated.value && bestStreakThisSession.value > 0 && gameSessionId.value) {
+    api.submitConversionScore(gameSessionId.value, 'streak-challenge', bestStreakThisSession.value, { streak: bestStreakThisSession.value }, conversionType.value)
+    api.updateConversionProgress({
+      bestStreak: Math.max(progress.value?.bestStreak ?? 0, bestStreakThisSession.value),
+      recordPlayed: true,
+    })
   }
 }
 
@@ -646,7 +684,12 @@ async function loadAchievements() {
 
 async function loadLeaderboard() {
   leaderboardLoading.value = true
-  const res = await api.getConversionLeaderboard(leaderboardMode.value, 20)
+  const conv = leaderboardMode.value === 'daily-streak'
+    ? undefined
+    : leaderboardMode.value === 'nibble-sprint'
+      ? 'binary-standalone'
+      : leaderboardConv.value
+  const res = await api.getConversionLeaderboard(leaderboardMode.value, 20, conv)
   leaderboardLoading.value = false
   if (res.data) {
     leaderboard.value = res.data.leaderboard.map((r, i) => ({
@@ -691,6 +734,19 @@ watch(gameType, (newType, oldType) => {
   // Sync leaderboard mode to game mode when switching
   if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint'].includes(newType)) {
     leaderboardMode.value = newType
+    leaderboardConv.value = conversionType.value
+    loadLeaderboard()
+  }
+})
+
+watch(leaderboardConv, () => {
+  if (leaderboardMode.value !== 'daily-streak') loadLeaderboard()
+})
+
+// Sync leaderboard conv when conversion type changes (like gamemode does)
+watch(conversionType, (newConv) => {
+  if (leaderboardMode.value !== 'daily-streak' && leaderboardMode.value !== 'nibble-sprint') {
+    leaderboardConv.value = newConv
     loadLeaderboard()
   }
 })
@@ -711,6 +767,7 @@ function buildQuery() {
   q.game = gameType.value
   q.conv = conversionType.value
   q.lbMode = leaderboardMode.value
+  if (leaderboardMode.value !== 'daily-streak') q.lbConv = leaderboardConv.value
   if (leaderboardFullscreen.value) q.lb = '1'
   return q
 }
@@ -725,8 +782,8 @@ function syncUrl() {
   }
 }
 
-// Sync state to URL (tab, game, conv, lb, lbMode)
-watch([activeTab, gameType, conversionType, leaderboardMode, leaderboardFullscreen], syncUrl, { deep: true })
+// Sync state to URL (tab, game, conv, lb, lbMode, lbConv)
+watch([activeTab, gameType, conversionType, leaderboardMode, leaderboardConv, leaderboardFullscreen], syncUrl, { deep: true })
 
 onMounted(() => {
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
@@ -967,6 +1024,10 @@ onMounted(() => {
             <div class="h-2 rounded-full bg-amber-200/50 dark:bg-amber-800/30 overflow-hidden">
               <div class="h-full bg-soft-yellow rounded-full transition-all duration-200" :style="{ width: `${xpProgress * 100}%` }" />
             </div>
+            <div v-if="progress.dailyStreak > 0 || progress.bestClassicStreak > 0" class="flex gap-3 mt-2 text-xs text-amber-700 dark:text-amber-300">
+              <span v-if="progress.dailyStreak > 0" title="Consecutive days played">🔥 {{ progress.dailyStreak }} day streak</span>
+              <span v-if="progress.bestClassicStreak > 0" title="Best streak in Classic mode">⚡ {{ progress.bestClassicStreak }} best</span>
+            </div>
           </div>
           <div v-else-if="!isAuthenticated" class="text-xs text-slate-600 dark:text-slate-400 p-2">
             <p class="mb-1.5">Sign in to earn XP and compete.</p>
@@ -1073,6 +1134,7 @@ onMounted(() => {
               <span class="text-base text-slate-600 dark:text-slate-400">
                 Streak: <strong class="text-emerald-600 dark:text-emerald-400">{{ practiceStreak }}</strong>
                 <template v-if="gameType === 'streak-challenge'"> · Best: {{ bestStreakThisSession }}</template>
+                <template v-else-if="gameType === 'classic' && progress?.bestClassicStreak"> · Best: {{ progress.bestClassicStreak }}</template>
                 · {{ practiceCorrect }}/{{ practiceTotal }}
               </span>
               <div class="flex items-center gap-4">
@@ -1097,7 +1159,7 @@ onMounted(() => {
 
             <template v-else>
               <p class="text-lg text-slate-600 dark:text-slate-400 mb-4">
-                {{ conversionType === 'ipv4-full' ? 'Convert to binary (8 bits per octet, dots):' : 'Convert to ' + (conversionType.includes('hex') ? 'hex' : 'binary') + ':' }}
+                {{ conversionType === 'ipv4-full' ? 'Convert to binary (8 bits per octet, dots):' : conversionType === 'ipv6-hextet' ? 'Convert to hex (4 digits, IPv6 hextet):' : 'Convert to ' + (conversionType.includes('hex') ? 'hex' : 'binary') + ':' }}
               </p>
               <p ref="questionRef" class="text-5xl md:text-7xl font-mono font-light text-emerald-700 dark:text-emerald-300 mb-10 tracking-tight">
                 {{ practiceQuestion.value }}
@@ -1153,7 +1215,7 @@ onMounted(() => {
                   ref="practiceInputRef"
                   v-model="practiceInput"
                   type="text"
-                  :placeholder="conversionType === 'ipv4-full' ? '11000000.10101000...' : conversionType.includes('hex') ? 'FF' : '11111111'"
+                  :placeholder="conversionType === 'ipv4-full' ? '11000000.10101000...' : conversionType === 'ipv6-hextet' ? '0ABC' : conversionType.includes('hex') ? 'FF' : '11111111'"
                   :class="cn(
                     'flex-1 min-w-[280px] px-6 py-4 rounded-2xl border-2 font-mono text-xl',
                     'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-600',
@@ -1260,22 +1322,26 @@ onMounted(() => {
               <h3 class="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase flex items-center gap-1">
                 <TrophyIcon class="w-4 h-4" /> Leaderboard
               </h3>
-              <div class="flex items-center gap-1">
-                <select v-model="leaderboardMode" @change="loadLeaderboard" class="text-xs px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-                  <option value="speed-round">Speed</option>
-                  <option value="survival">Survival</option>
-                  <option value="streak-challenge">Streak</option>
-                  <option value="nibble-sprint">Nibble</option>
-                </select>
-                <button
-                  type="button"
-                  @click="leaderboardFullscreen = true"
-                  class="p-1.5 rounded-lg text-amber-700 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
-                  title="Expand leaderboard"
-                >
-                  <ArrowsPointingOutIcon class="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                @click="leaderboardFullscreen = true"
+                class="p-1.5 rounded-lg text-amber-700 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
+                title="Expand leaderboard"
+              >
+                <ArrowsPointingOutIcon class="w-4 h-4" />
+              </button>
+            </div>
+            <div class="flex items-center gap-1.5 mb-2 flex-nowrap">
+              <select v-model="leaderboardMode" @change="loadLeaderboard" class="text-xs px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 min-w-0 flex-1 shrink">
+                <option value="speed-round">Speed</option>
+                <option value="survival">Survival</option>
+                <option value="streak-challenge">Streak</option>
+                <option value="nibble-sprint">Nibble</option>
+                <option value="daily-streak">Daily Streak</option>
+              </select>
+              <select v-if="leaderboardMode !== 'daily-streak' && leaderboardMode !== 'nibble-sprint'" v-model="leaderboardConv" @change="loadLeaderboard" class="text-xs px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 min-w-0 flex-1 shrink">
+                <option v-for="ct in conversionTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
+              </select>
             </div>
             <div v-if="!isAuthenticated" class="text-xs text-slate-500 py-2">
               <p class="mb-1.5">Sign in to compete.</p>
@@ -1312,7 +1378,7 @@ onMounted(() => {
                 class="w-full max-w-lg rounded-3xl p-8 bg-white/95 dark:bg-slate-800/95 border-2 border-slate-200/80 dark:border-slate-600/80 shadow-2xl flex flex-col max-h-[85vh]"
                 @click.stop
               >
-                <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center justify-between mb-4">
                   <h3 class="text-lg font-semibold text-amber-800 dark:text-amber-300 uppercase flex items-center gap-2">
                     <TrophyIcon class="w-6 h-6" /> Leaderboard
                   </h3>
@@ -1325,12 +1391,18 @@ onMounted(() => {
                     <XMarkIcon class="w-5 h-5" />
                   </button>
                 </div>
-                <select v-model="leaderboardMode" @change="loadLeaderboard" class="mb-4 w-full text-sm px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-                  <option value="speed-round">Speed Round</option>
-                  <option value="survival">Survival</option>
-                  <option value="streak-challenge">Streak Challenge</option>
-                  <option value="nibble-sprint">Nibble Sprint</option>
-                </select>
+                <div class="flex flex-col gap-2 mb-4">
+                  <select v-model="leaderboardMode" @change="loadLeaderboard" :class="cn('w-full text-sm px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300')">
+                    <option value="speed-round">Speed Round</option>
+                    <option value="survival">Survival</option>
+                    <option value="streak-challenge">Streak Challenge</option>
+                    <option value="nibble-sprint">Nibble Sprint</option>
+                    <option value="daily-streak">Daily Streak</option>
+                  </select>
+                  <select v-if="leaderboardMode !== 'daily-streak' && leaderboardMode !== 'nibble-sprint'" v-model="leaderboardConv" @change="loadLeaderboard" class="w-full text-sm px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">
+                    <option v-for="ct in conversionTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
+                  </select>
+                </div>
                 <div v-if="!isAuthenticated" class="text-sm text-slate-500 py-4 text-center">
                   <p class="mb-3">Sign in to compete.</p>
                   <div class="flex justify-center gap-3">

@@ -186,14 +186,29 @@ export const api = {
   },
 
   // Conversion Trainer
-  async submitConversionScore(mode: string, score: number, metadata?: Record<string, unknown>) {
-    return request<{ message: string }>('/conversion-trainer/scores', {
+  async startConversionSession(mode: string, conv?: string) {
+    return request<{ sessionId: string; expiresAt: string }>('/conversion-trainer/start-session', {
       method: 'POST',
-      body: JSON.stringify({ mode, score, metadata }),
+      body: JSON.stringify({ mode, conv }),
     })
   },
 
-  async getConversionLeaderboard(mode: string, limit = 20) {
+  async submitConversionScore(
+    sessionId: string,
+    mode: string,
+    score: number,
+    metadata?: { correct?: number; total?: number; timeSeconds?: number; streak?: number },
+    conv?: string
+  ) {
+    return request<{ message: string }>('/conversion-trainer/scores', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, mode, score, conv, metadata }),
+    })
+  },
+
+  async getConversionLeaderboard(mode: string, limit = 20, conv?: string) {
+    let url = `/conversion-trainer/leaderboard?mode=${encodeURIComponent(mode)}&limit=${limit}`
+    if (conv) url += `&conv=${encodeURIComponent(conv)}`
     return request<{
       leaderboard: Array<{
         id: number
@@ -204,7 +219,7 @@ export const api = {
         createdAt: string
         userName: string
       }>
-    }>(`/conversion-trainer/leaderboard?mode=${encodeURIComponent(mode)}&limit=${limit}`)
+    }>(url)
   },
 
   async getMyConversionScores() {
@@ -216,6 +231,8 @@ export const api = {
       totalXp: number
       level: number
       bestStreak: number
+      bestClassicStreak: number
+      dailyStreak: number
       bestSpeedRound: number
       bestSurvival: number
       bestNibbleSprint: number
@@ -225,6 +242,8 @@ export const api = {
   async updateConversionProgress(data: {
     xpEarned?: number
     bestStreak?: number
+    bestClassicStreak?: number
+    recordPlayed?: boolean
     bestSpeedRound?: number
     bestSurvival?: number
     bestNibbleSprint?: number
@@ -233,6 +252,8 @@ export const api = {
       totalXp: number
       level: number
       bestStreak: number
+      bestClassicStreak: number
+      dailyStreak: number
       bestSpeedRound: number
       bestSurvival: number
       bestNibbleSprint: number
@@ -252,6 +273,41 @@ export const api = {
     return request<{ message: string }>('/conversion-trainer/achievements/unlock', {
       method: 'POST',
       body: JSON.stringify({ achievementId }),
+    })
+  },
+
+  // Admin: Conversion Trainer scores
+  async getAdminConversionScores(params?: { mode?: string; conv?: string; limit?: number }) {
+    const search = new URLSearchParams()
+    if (params?.mode) search.set('mode', params.mode)
+    if (params?.conv) search.set('conv', params.conv)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return request<{
+      scores: Array<{
+        id: number
+        userId: string
+        userName: string
+        userEmail: string
+        mode: string
+        conv: string
+        score: number
+        metadata: Record<string, unknown> | null
+        createdAt: string
+      }>
+    }>(`/admin/conversion-trainer/scores${q ? '?' + q : ''}`)
+  },
+
+  async updateAdminConversionScore(id: number, score: number) {
+    return request<{ message: string }>(`/admin/conversion-trainer/scores/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ score }),
+    })
+  },
+
+  async deleteAdminConversionScore(id: number) {
+    return request<{ message: string }>(`/admin/conversion-trainer/scores/${id}`, {
+      method: 'DELETE',
     })
   },
 }

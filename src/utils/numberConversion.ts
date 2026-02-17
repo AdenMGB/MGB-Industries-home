@@ -32,6 +32,12 @@ export function hexToDecimal(hex: string): number | null {
   return isNaN(num) ? null : num
 }
 
+/** Convert decimal 0-65535 to 4 hex digits (IPv6 hextet) */
+export function decimalToIpv6Hextet(n: number): string | null {
+  if (!Number.isInteger(n) || n < 0 || n > 0xffff) return null
+  return n.toString(16).toUpperCase().padStart(4, '0')
+}
+
 export function ipv4ToBinary(ip: string): string | null {
   const octets = ip.trim().split('.')
   if (octets.length !== 4) return null
