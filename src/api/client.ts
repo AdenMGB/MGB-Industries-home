@@ -184,4 +184,74 @@ export const api = {
       messages: Array<{ id: number; name: string; email: string; message: string; created_at: string }>
     }>('/admin/contact-messages')
   },
+
+  // Conversion Trainer
+  async submitConversionScore(mode: string, score: number, metadata?: Record<string, unknown>) {
+    return request<{ message: string }>('/conversion-trainer/scores', {
+      method: 'POST',
+      body: JSON.stringify({ mode, score, metadata }),
+    })
+  },
+
+  async getConversionLeaderboard(mode: string, limit = 20) {
+    return request<{
+      leaderboard: Array<{
+        id: number
+        userId: string
+        mode: string
+        score: number
+        metadata: Record<string, unknown> | null
+        createdAt: string
+        userName: string
+      }>
+    }>(`/conversion-trainer/leaderboard?mode=${encodeURIComponent(mode)}&limit=${limit}`)
+  },
+
+  async getMyConversionScores() {
+    return request<{ scores: Record<string, number> }>('/conversion-trainer/my-scores')
+  },
+
+  async getConversionProgress() {
+    return request<{
+      totalXp: number
+      level: number
+      bestStreak: number
+      bestSpeedRound: number
+      bestSurvival: number
+      bestNibbleSprint: number
+    }>('/conversion-trainer/progress')
+  },
+
+  async updateConversionProgress(data: {
+    xpEarned?: number
+    bestStreak?: number
+    bestSpeedRound?: number
+    bestSurvival?: number
+    bestNibbleSprint?: number
+  }) {
+    return request<{
+      totalXp: number
+      level: number
+      bestStreak: number
+      bestSpeedRound: number
+      bestSurvival: number
+      bestNibbleSprint: number
+    }>('/conversion-trainer/progress', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async getConversionAchievements() {
+    return request<{
+      achievements: Array<{ id: string; unlockedAt: string }>
+    }>('/conversion-trainer/achievements')
+  },
+
+  async unlockConversionAchievement(achievementId: string) {
+    return request<{ message: string }>('/conversion-trainer/achievements/unlock', {
+      method: 'POST',
+      body: JSON.stringify({ achievementId }),
+    })
+  },
 }

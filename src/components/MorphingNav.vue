@@ -184,7 +184,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <nav class="fixed top-0 left-0 right-0 z-50 p-6 md:p-8">
+  <nav
+    v-show="!(route.name === 'ConversionTrainer' && route.query.fullscreen === '1')"
+    class="fixed top-0 left-0 right-0 z-50 p-6 md:p-8"
+  >
     <div class="flex items-center justify-between max-w-7xl mx-auto">
       <!-- Logo/Brand with animation -->
       <router-link

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
+import { useAuth } from '@/composables/useAuth'
+import { api } from '@/api/client'
 import {
   AcademicCapIcon,
   ArrowPathIcon,
@@ -15,10 +17,14 @@ import {
   MagnifyingGlassIcon,
   SwatchIcon,
 } from '@heroicons/vue/24/outline'
-import { ChevronRightIcon } from '@heroicons/vue/24/solid'
+import { ChevronRightIcon, TrophyIcon as TrophyIconSolid } from '@heroicons/vue/24/solid'
+import { CONVERSION_TRAINER_ACHIEVEMENTS } from '@/config/conversionTrainerAchievements'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
+const { isAuthenticated } = useAuth()
+const conversionAchievements = ref<Set<string>>(new Set())
+const conversionAchievementCount = computed(() => conversionAchievements.value.size)
 
 const categories = [
   {
@@ -85,9 +91,19 @@ const openTool = (path: string) => {
   router.push(path)
 }
 
-onMounted(() => {
+onMounted(async () => {
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
   gsap.fromTo('.tool-card', { opacity: 0, y: 30, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.1, delay: 0.1, ease: premiumEase })
+  if (isAuthenticated.value) {
+    try {
+      const res = await api.getConversionAchievements()
+      if (res.data?.achievements) {
+        conversionAchievements.value = new Set(res.data.achievements.map((a) => a.id))
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 })
 </script>
 
@@ -148,6 +164,14 @@ onMounted(() => {
                     <h3 class="text-lg font-light text-gray-800 dark:text-white">
                       {{ tool.name }}
                     </h3>
+                    <span
+                      v-if="tool.path === '/developer-tools/conversion-trainer' && isAuthenticated"
+                      class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-xs font-medium"
+                      :title="`${conversionAchievementCount}/${Object.keys(CONVERSION_TRAINER_ACHIEVEMENTS).length} achievements`"
+                    >
+                      <TrophyIconSolid class="w-3.5 h-3.5" />
+                      {{ conversionAchievementCount }}/{{ Object.keys(CONVERSION_TRAINER_ACHIEVEMENTS).length }}
+                    </span>
                   </div>
                   <p class="text-sm text-gray-600 dark:text-gray-400">
                     {{ tool.description }}

@@ -15,8 +15,12 @@ import {
   LockClosedIcon,
   XMarkIcon,
   CheckIcon,
+  TrophyIcon,
+  BoltIcon,
+  ClockIcon as ClockIconOutline,
 } from '@heroicons/vue/24/outline'
-import { CubeIcon, ClockIcon, StarIcon } from '@heroicons/vue/24/solid'
+import { CubeIcon, ClockIcon, StarIcon, HeartIcon, TrophyIcon as TrophyIconSolid } from '@heroicons/vue/24/solid'
+import { CONVERSION_TRAINER_ACHIEVEMENTS } from '@/config/conversionTrainerAchievements'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
@@ -45,25 +49,40 @@ const gameHistory = ref<Array<{ game_id: string; game_name: string; game_href: s
 const gameFavorites = ref<Array<{ game_id: string; game_name: string; game_href: string; created_at: string }>>([])
 const gamesWithSaves = ref(0)
 
+// Conversion Trainer achievements
+const conversionAchievements = ref<Set<string>>(new Set())
+
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 const openGame = (gameId: string, gameHref: string) => {
   router.push({ name: 'Game', params: { id: gameId }, query: { href: gameHref } })
 }
 
+const achievementIcons: Record<string, typeof TrophyIconSolid> = {
+  trophy: TrophyIconSolid,
+  bolt: BoltIcon,
+  heart: HeartIcon,
+  clock: ClockIconOutline,
+  star: StarIcon,
+}
+
 onMounted(async () => {
   // Load game stats
   try {
-    const [historyRes, favoritesRes, savesRes] = await Promise.all([
+    const [historyRes, favoritesRes, savesRes, achievementsRes] = await Promise.all([
       api.getGameHistory(),
       api.getGameFavorites(),
       api.getGameSaves(),
+      api.getConversionAchievements(),
     ])
     if (historyRes.data) gameHistory.value = historyRes.data.history || []
     if (favoritesRes.data) gameFavorites.value = favoritesRes.data.favorites || []
     if (savesRes.data) gamesWithSaves.value = Object.keys(savesRes.data.saves || {}).length
+    if (achievementsRes.data?.achievements) {
+      conversionAchievements.value = new Set(achievementsRes.data.achievements.map((a) => a.id))
+    }
   } catch (error) {
-    console.warn('Failed to load game stats:', error)
+    console.warn('Failed to load account data:', error)
   }
 
   await nextTick()
@@ -641,6 +660,47 @@ const handleLogout = () => {
             <CubeIcon class="w-4 h-4" />
             Browse all games
           </router-link>
+        </div>
+      </div>
+
+      <!-- Conversion Trainer Achievements Card -->
+      <div
+        class="card mb-6 p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50"
+      >
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+            <TrophyIconSolid class="w-6 h-6 text-amber-500" />
+            Conversion Trainer
+          </h2>
+          <router-link
+            to="/developer-tools/conversion-trainer"
+            class="text-sm font-medium text-mint hover:text-emerald-700 dark:text-emerald-400 transition-colors"
+          >
+            Practice →
+          </router-link>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {{ conversionAchievements.size }}/{{ Object.keys(CONVERSION_TRAINER_ACHIEVEMENTS).length }} achievements unlocked
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <div
+            v-for="(ach, id) in CONVERSION_TRAINER_ACHIEVEMENTS"
+            :key="id"
+            :class="cn(
+              'flex items-center gap-2 px-4 py-3 rounded-xl transition-all',
+              conversionAchievements.has(id)
+                ? 'bg-amber-100/80 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 border border-amber-200/60 dark:border-amber-700/50'
+                : 'bg-gray-100/60 dark:bg-gray-700/30 text-gray-500 dark:text-gray-500 border border-gray-200/50 dark:border-gray-600/50',
+            )"
+            :title="ach.description"
+          >
+            <component
+              :is="achievementIcons[ach.icon]"
+              class="w-5 h-5 shrink-0"
+              :class="conversionAchievements.has(id) ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'"
+            />
+            <span class="font-medium">{{ ach.name }}</span>
+          </div>
         </div>
       </div>
 
