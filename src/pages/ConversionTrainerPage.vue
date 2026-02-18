@@ -623,9 +623,13 @@ function checkPracticeAnswer(): void {
 function nextQuestion(): void {
   if (gameOver.value) return
   generatePracticeQuestion()
-  if (useSegmentedBoxes.value) {
-    nextTick(() => boxRefs.value[0]?.focus())
-  }
+  nextTick(() => {
+    if (useSegmentedBoxes.value) {
+      boxRefs.value[0]?.focus()
+    } else {
+      practiceInputRef.value?.focus()
+    }
+  })
 }
 
 function revealAnswer(): void {
@@ -656,6 +660,14 @@ async function startGame() {
   } else if (gameType.value === 'nibble-sprint') {
     startTimer(30)
   }
+
+  nextTick(() => {
+    if (useSegmentedBoxes.value) {
+      boxRefs.value[0]?.focus()
+    } else {
+      practiceInputRef.value?.focus()
+    }
+  })
 }
 
 function endStreakChallenge() {
