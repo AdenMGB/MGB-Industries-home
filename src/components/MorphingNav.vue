@@ -267,7 +267,7 @@ onUnmounted(() => {
         <!-- Auth Section -->
         <div v-if="!isAuthenticated" class="flex items-center gap-2 ml-2">
           <router-link
-            to="/login"
+            :to="{ path: '/login', query: { redirect: route.fullPath } }"
             :class="cn(
               'px-4 py-2 rounded-lg text-sm font-normal',
               'transition-all duration-300 transform-gpu',
@@ -278,7 +278,7 @@ onUnmounted(() => {
             Sign In
           </router-link>
           <router-link
-            to="/signup"
+            :to="{ path: '/signup', query: { redirect: route.fullPath } }"
             :class="cn(
               'px-4 py-2 rounded-lg text-sm font-normal',
               'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white',
@@ -455,8 +455,8 @@ onUnmounted(() => {
         <!-- Mobile Auth Section -->
         <div v-if="!isAuthenticated" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
           <router-link
-            to="/login"
-            @click="navigate('/login')"
+            :to="{ path: '/login', query: { redirect: route.fullPath } }"
+            @click="closeNav"
             :class="cn(
               'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
               'transition-all duration-300 transform-gpu',
@@ -468,8 +468,8 @@ onUnmounted(() => {
             <span>Sign In</span>
           </router-link>
           <router-link
-            to="/signup"
-            @click="navigate('/signup')"
+            :to="{ path: '/signup', query: { redirect: route.fullPath } }"
+            @click="closeNav"
             :class="cn(
               'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
               'bg-peach/30 text-gray-800',

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { EnvelopeIcon, LockClosedIcon, UserIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const route = useRoute()
 const { signup } = useAuth()
 
 const name = ref('')
@@ -59,7 +60,8 @@ const handleSubmit = async () => {
 
   try {
     await signup(email.value, password.value, name.value)
-    router.push('/account')
+    const redirect = (route.query.redirect as string) || '/account'
+    router.push(redirect)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Signup failed'
   } finally {
@@ -249,7 +251,7 @@ const handleSubmit = async () => {
             <p class="text-sm text-gray-600">
               Already have an account?
               <router-link
-                to="/login"
+                :to="{ path: '/login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }"
                 class="text-peach hover:text-coral transition-colors duration-300 font-medium"
               >
                 Sign in

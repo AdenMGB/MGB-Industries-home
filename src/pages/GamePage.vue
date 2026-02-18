@@ -128,6 +128,20 @@ const toggleFullscreen = async () => {
   }
 }
 
+// When auth completes after mount (e.g. refresh or login redirect), update UI
+watch(isAuthenticated, async (val) => {
+  if (val) {
+    try {
+      await api.recordGameVisit(gameId.value, gameName.value, gameHref.value)
+      const favRes = await api.getGameFavorites()
+      const favIds = new Set((favRes.data?.favorites || []).map((f) => f.game_id))
+      isFavorite.value = favIds.has(gameId.value)
+    } catch (error) {
+      console.warn('Failed to update game state after auth:', error)
+    }
+  }
+})
+
 // Listen for fullscreen changes
 const handleFullscreenChange = () => {
   isFullscreen.value = !!(
@@ -271,7 +285,7 @@ onUnmounted(() => {
           </router-link>
           <span class="text-gray-500">or</span>
           <router-link
-            to="/login"
+            :to="{ path: '/login', query: { redirect: route.fullPath } }"
             :class="cn(
               'px-3 py-1 rounded-md text-xs font-medium',
               'text-gray-700 hover:text-gray-800 underline',

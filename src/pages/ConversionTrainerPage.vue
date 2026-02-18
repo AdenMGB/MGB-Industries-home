@@ -736,6 +736,15 @@ watch(activeTab, (tab) => {
   }
 })
 
+// When auth completes after mount (e.g. refresh or login redirect), load data
+watch(isAuthenticated, (val) => {
+  if (val && activeTab.value === 'practice') {
+    loadProgress()
+    loadAchievements()
+    loadLeaderboard()
+  }
+})
+
 watch(gameType, (newType, oldType) => {
   if (oldType === 'streak-challenge' && bestStreakThisSession.value > 0) {
     endStreakChallenge()
@@ -1044,9 +1053,9 @@ onMounted(() => {
           <div v-else-if="!isAuthenticated" class="text-xs text-slate-600 dark:text-slate-400 p-2">
             <p class="mb-1.5">Sign in to earn XP and compete.</p>
             <div class="flex flex-wrap gap-1.5">
-              <router-link to="/login" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign in</router-link>
+              <router-link :to="{ path: '/login', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign in</router-link>
               <span class="text-slate-400">·</span>
-              <router-link to="/signup" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign up</router-link>
+              <router-link :to="{ path: '/signup', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign up</router-link>
             </div>
           </div>
 
@@ -1358,9 +1367,9 @@ onMounted(() => {
             <div v-if="!isAuthenticated" class="text-xs text-slate-500 py-2">
               <p class="mb-1.5">Sign in to compete.</p>
               <div class="flex flex-wrap gap-2">
-                <router-link to="/login" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign in</router-link>
+                <router-link :to="{ path: '/login', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign in</router-link>
                 <span class="text-slate-400">·</span>
-                <router-link to="/signup" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign up</router-link>
+                <router-link :to="{ path: '/signup', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign up</router-link>
               </div>
             </div>
             <div v-else-if="leaderboardLoading" class="text-xs text-slate-500 py-2">Loading...</div>
@@ -1418,8 +1427,8 @@ onMounted(() => {
                 <div v-if="!isAuthenticated" class="text-sm text-slate-500 py-4 text-center">
                   <p class="mb-3">Sign in to compete.</p>
                   <div class="flex justify-center gap-3">
-                    <router-link to="/login" class="px-4 py-2 rounded-xl bg-mint/30 text-emerald-800 dark:text-emerald-200 hover:bg-mint/50 font-medium transition-colors">Sign in</router-link>
-                    <router-link to="/signup" class="px-4 py-2 rounded-xl bg-mint/30 text-emerald-800 dark:text-emerald-200 hover:bg-mint/50 font-medium transition-colors">Sign up</router-link>
+                    <router-link :to="{ path: '/login', query: { redirect: route.fullPath } }" class="px-4 py-2 rounded-xl bg-mint/30 text-emerald-800 dark:text-emerald-200 hover:bg-mint/50 font-medium transition-colors">Sign in</router-link>
+                    <router-link :to="{ path: '/signup', query: { redirect: route.fullPath } }" class="px-4 py-2 rounded-xl bg-mint/30 text-emerald-800 dark:text-emerald-200 hover:bg-mint/50 font-medium transition-colors">Sign up</router-link>
                   </div>
                 </div>
                 <div v-else-if="leaderboardLoading" class="text-sm text-slate-500 py-4 text-center">Loading...</div>
