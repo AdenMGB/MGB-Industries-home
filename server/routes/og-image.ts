@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { join } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { Resvg } from '@resvg/resvg-js'
 import { fetchCommit } from '../utils/fetch-commit.js'
 import { parseGitUrl } from '../utils/git-url.js'
@@ -7,6 +9,12 @@ import { parseGitUrl } from '../utils/git-url.js'
 const SITE_NAME = 'AdenMGB'
 const OG_WIDTH = 1200
 const OG_HEIGHT = 630
+
+// Resvg requires TTF (WOFF not supported for SVG text). Fetch Inter TTF from CDN.
+const FONT_URLS = [
+  'https://cdn.jsdelivr.net/npm/inter-font@3.19.0/ttf/Inter-Regular.ttf',
+  'https://cdn.jsdelivr.net/npm/inter-font@3.19.0/ttf/Inter-SemiBold.ttf',
+]
 
 // Website pastel palette (from tailwind.config.js)
 const COLORS = {
@@ -21,12 +29,26 @@ const COLORS = {
 
 const MAX_FILES_SHOWN = 6
 
-function getFontPaths(): string[] {
-  const cwd = process.cwd()
-  return [
-    join(cwd, 'node_modules/@fontsource/inter/files/inter-latin-400-normal.woff'),
-    join(cwd, 'node_modules/@fontsource/inter/files/inter-latin-600-normal.woff'),
-  ]
+let fontPathsPromise: Promise<string[]> | null = null
+
+async function getFontPaths(): Promise<string[]> {
+  if (fontPathsPromise) return fontPathsPromise
+  fontPathsPromise = (async () => {
+    const fontDir = join(process.cwd(), 'tmp', 'fonts')
+    const paths = [
+      join(fontDir, 'Inter-Regular.ttf'),
+      join(fontDir, 'Inter-SemiBold.ttf'),
+    ]
+    if (existsSync(paths[0]!)) return paths
+    await mkdir(fontDir, { recursive: true })
+    for (let i = 0; i < FONT_URLS.length; i++) {
+      const res = await fetch(FONT_URLS[i]!)
+      if (!res.ok) throw new Error(`Failed to fetch font: ${res.status}`)
+      await writeFile(paths[i]!, Buffer.from(await res.arrayBuffer()))
+    }
+    return paths
+  })()
+  return fontPathsPromise
 }
 
 function escapeSvg(str: string): string {
@@ -43,14 +65,14 @@ function truncatePath(path: string, maxLen = 55): string {
   return path.slice(0, maxLen - 3) + '...'
 }
 
-function svgToPng(svg: string): Buffer {
-  const fontPaths = getFontPaths()
+async function svgToPng(svg: string): Promise<Buffer> {
+  const fontPaths = await getFontPaths()
   const resvg = new Resvg(svg, {
     fitTo: { mode: 'width', value: OG_WIDTH },
     background: COLORS.cream,
     font: {
       fontFiles: fontPaths,
-      loadSystemFonts: false,
+      loadSystemFonts: true,
       defaultFontFamily: 'Inter',
       sansSerifFamily: 'Inter',
       serifFamily: 'Inter',
@@ -146,7 +168,7 @@ export async function ogImageRoutes(fastify: FastifyInstance) {
   fastify.get('/og-image/default', async (_request, reply) => {
     try {
       const svg = buildDefaultSvg()
-      const buffer = svgToPng(svg)
+      const buffer = await svgToPng(svg)
       reply.header('Content-Type', 'image/png')
       reply.header('Cache-Control', 'public, max-age=86400, s-maxage=86400')
       return reply.send(buffer)
@@ -159,7 +181,7 @@ export async function ogImageRoutes(fastify: FastifyInstance) {
   fastify.get('/og-image.png', async (_request, reply) => {
     try {
       const svg = buildDefaultSvg()
-      const buffer = svgToPng(svg)
+      const buffer = await svgToPng(svg)
       reply.header('Content-Type', 'image/png')
       reply.header('Cache-Control', 'public, max-age=86400, s-maxage=86400')
       return reply.send(buffer)
@@ -218,7 +240,7 @@ export async function ogImageRoutes(fastify: FastifyInstance) {
         totalDel,
         fileCount: files.length,
       })
-      const buffer = svgToPng(svg)
+      const buffer = await svgToPng(svg)
       reply.header('Content-Type', 'image/png')
       reply.header('Cache-Control', 'public, max-age=3600, s-maxage=3600')
       return reply.send(buffer)
