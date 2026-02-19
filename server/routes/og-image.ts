@@ -20,7 +20,12 @@ const FONT_URLS = [
 const COLORS = {
   cream: '#FFF8E7',
   peach: '#FFB5A7',
+  coral: '#FF8C94',
+  lavender: '#C8A8E9',
+  mint: '#A8E6CF',
   softYellow: '#FFD3A5',
+  warmPink: '#FFB6C1',
+  softBlue: '#B5E5E8',
   textDark: '#1a1a2e',
   textMuted: '#4a4a6a',
   addGreen: '#0d9488',
@@ -28,6 +33,56 @@ const COLORS = {
 }
 
 const MAX_FILES_SHOWN = 6
+
+// Page-specific OG config: path pattern -> { title, chips (for horizontal icon strip) }
+const PAGE_OG: Record<string, { title: string; chips: { label: string; color: string }[] }> = {
+  '/': { title: 'AdenMGB', chips: [] },
+  '/projects': { title: 'Projects', chips: [{ label: 'Code', color: COLORS.peach }, { label: 'Open Source', color: COLORS.lavender }, { label: 'Creative Tech', color: COLORS.mint }] },
+  '/about': { title: 'About', chips: [{ label: 'Timeline', color: COLORS.softBlue }, { label: 'Background', color: COLORS.peach }] },
+  '/contact': { title: 'Contact', chips: [{ label: 'Message', color: COLORS.mint }, { label: 'Email', color: COLORS.lavender }] },
+  '/developer-tools': {
+    title: 'Developer Tools',
+    chips: [
+      { label: '{}', color: COLORS.softBlue },
+      { label: '</>', color: COLORS.peach },
+      { label: '0x', color: COLORS.lavender },
+      { label: '#', color: COLORS.warmPink },
+      { label: 'JSON', color: COLORS.softYellow },
+      { label: 'Git', color: COLORS.mint },
+      { label: '⏱', color: COLORS.coral },
+      { label: 'Regex', color: COLORS.lavender },
+    ],
+  },
+  '/developer-tools/ipv4-to-binary': { title: 'IPv4 ↔ Binary', chips: [{ label: 'IPv4', color: COLORS.peach }, { label: 'Binary', color: COLORS.mint }] },
+  '/developer-tools/ipv6-to-hex': { title: 'IPv6 ↔ Hex', chips: [{ label: 'IPv6', color: COLORS.lavender }, { label: 'Hex', color: COLORS.mint }] },
+  '/developer-tools/number-to-binary': { title: 'Number ↔ Binary', chips: [{ label: 'Decimal', color: COLORS.peach }, { label: 'Binary', color: COLORS.mint }] },
+  '/developer-tools/conversion-trainer': { title: 'Conversion Trainer', chips: [{ label: 'Practice', color: COLORS.mint }, { label: 'Quiz', color: COLORS.peach }, { label: 'XP', color: COLORS.softYellow }] },
+  '/developer-tools/number-to-hex': { title: 'Number ↔ Hex', chips: [{ label: 'Decimal', color: COLORS.lavender }, { label: 'Hex', color: COLORS.mint }] },
+  '/developer-tools/base64': { title: 'Base64', chips: [{ label: 'Encode', color: COLORS.mint }, { label: 'Decode', color: COLORS.peach }] },
+  '/developer-tools/json-formatter': { title: 'JSON Formatter', chips: [{ label: 'JSON', color: COLORS.softYellow }, { label: 'Pretty', color: COLORS.mint }] },
+  '/developer-tools/color-converter': { title: 'Color Converter', chips: [{ label: 'Hex', color: COLORS.coral }, { label: 'RGB', color: COLORS.mint }, { label: 'HSL', color: COLORS.lavender }] },
+  '/developer-tools/diff-checker': { title: 'Diff Checker', chips: [{ label: 'Compare', color: COLORS.mint }, { label: 'Diff', color: COLORS.peach }] },
+  '/developer-tools/case-converter': { title: 'Case Converter', chips: [{ label: 'camelCase', color: COLORS.warmPink }, { label: 'snake_case', color: COLORS.lavender }] },
+  '/developer-tools/html-encode': { title: 'HTML Encode', chips: [{ label: 'HTML', color: COLORS.softBlue }, { label: 'Entities', color: COLORS.peach }] },
+  '/developer-tools/url-encode': { title: 'URL Encode', chips: [{ label: 'URL', color: COLORS.softBlue }, { label: 'Encode', color: COLORS.mint }] },
+  '/developer-tools/uuid-generator': { title: 'UUID Generator', chips: [{ label: 'UUID', color: COLORS.warmPink }, { label: 'v4', color: COLORS.lavender }] },
+  '/developer-tools/unix-timestamp': { title: 'Unix Timestamp', chips: [{ label: 'Timestamp', color: COLORS.peach }, { label: 'Date', color: COLORS.softBlue }] },
+  '/developer-tools/regex-tester': { title: 'Regex Tester', chips: [{ label: 'Regex', color: COLORS.lavender }, { label: 'Test', color: COLORS.mint }] },
+  '/developer-tools/jwt-decoder': { title: 'JWT Decoder', chips: [{ label: 'JWT', color: COLORS.softYellow }, { label: 'Decode', color: COLORS.peach }] },
+  '/developer-tools/hash-generator': { title: 'Hash Generator', chips: [{ label: 'MD5', color: COLORS.coral }, { label: 'SHA', color: COLORS.mint }] },
+  '/developer-tools/git-history': { title: 'Git History', chips: [{ label: 'Commits', color: COLORS.softBlue }, { label: 'Timeline', color: COLORS.lavender }] },
+  '/developer-tools/git-commit': { title: 'Git Commit', chips: [{ label: 'Commit', color: COLORS.softBlue }, { label: 'Diff', color: COLORS.peach }] },
+  '/developer-tools/git-stats': { title: 'Git Stats', chips: [{ label: 'Stats', color: COLORS.softBlue }, { label: 'Authors', color: COLORS.lavender }] },
+  '/developer-tools/git-search': { title: 'Git Search', chips: [{ label: 'Search', color: COLORS.softBlue }, { label: 'Commits', color: COLORS.mint }] },
+  '/developer-tools/git-file-history': { title: 'File History', chips: [{ label: 'File', color: COLORS.softBlue }, { label: 'History', color: COLORS.peach }] },
+  '/developer-tools/git-compare': { title: 'Branch Compare', chips: [{ label: 'Branches', color: COLORS.softBlue }, { label: 'Compare', color: COLORS.lavender }] },
+  '/games': { title: 'Games', chips: [{ label: 'Play', color: COLORS.mint }, { label: 'Browser', color: COLORS.peach }, { label: 'Offline', color: COLORS.lavender }] },
+  '/login': { title: 'Login', chips: [{ label: 'Sign in', color: COLORS.mint }] },
+  '/signup': { title: 'Sign Up', chips: [{ label: 'Create account', color: COLORS.lavender }] },
+  '/account': { title: 'Account', chips: [{ label: 'Settings', color: COLORS.softBlue }] },
+  '/admin': { title: 'Admin', chips: [{ label: 'Dashboard', color: COLORS.coral }] },
+  '/reset-password': { title: 'Reset Password', chips: [{ label: 'Password', color: COLORS.peach }] },
+}
 
 let fontPathsPromise: Promise<string[]> | null = null
 
@@ -84,6 +139,32 @@ async function svgToPng(svg: string): Promise<Buffer> {
 }
 
 function buildDefaultSvg(): string {
+  return buildPageSvg('/', 'AdenMGB', [])
+}
+
+function buildPageSvg(path: string, title: string, chips: { label: string; color: string }[]): string {
+  const chipH = 52
+  const chipGap = 10
+  const chipStartY = 390
+  const chipFontSize = 13
+  const chipPadding = 14
+  const maxChips = 10
+  const shownChips = chips.slice(0, maxChips)
+
+  let chipX = 60
+  const chipElements = shownChips.map((c) => {
+    const labelTrunc = c.label.length > 10 ? c.label.slice(0, 8) + '…' : c.label
+    const w = Math.max(60, Math.min(110, labelTrunc.length * 9 + chipPadding * 2))
+    const el = `<g transform="translate(${chipX}, ${chipStartY})">
+      <rect x="0" y="0" width="${w}" height="${chipH}" rx="10" fill="${c.color}" fill-opacity="0.65" stroke="${c.color}" stroke-width="1.5"/>
+      <text x="${w / 2}" y="${chipH / 2 + 4}" font-family="Inter" font-size="${chipFontSize}" font-weight="600" fill="${COLORS.textDark}" text-anchor="middle">${escapeSvg(labelTrunc)}</text>
+    </g>`
+    chipX += w + chipGap
+    return el
+  }).join('\n  ')
+
+  const subtitle = path === '/' ? 'Open Source Developer &amp; Creative Technologist' : escapeSvg(SITE_NAME)
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_WIDTH}" height="${OG_HEIGHT}" viewBox="0 0 ${OG_WIDTH} ${OG_HEIGHT}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -91,11 +172,36 @@ function buildDefaultSvg(): string {
       <stop offset="50%" stop-color="${COLORS.peach}"/>
       <stop offset="100%" stop-color="${COLORS.softYellow}"/>
     </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.08"/>
+    </filter>
   </defs>
   <rect width="100%" height="100%" fill="url(#bg)"/>
-  <text x="${OG_WIDTH / 2}" y="280" font-family="Inter" font-size="56" font-weight="600" fill="${COLORS.textDark}" text-anchor="middle">${escapeSvg(SITE_NAME)}</text>
-  <text x="${OG_WIDTH / 2}" y="340" font-family="Inter" font-size="24" fill="${COLORS.textMuted}" text-anchor="middle">Open Source Developer &amp; Creative Technologist</text>
+  <text x="${OG_WIDTH / 2}" y="280" font-family="Inter" font-size="56" font-weight="600" fill="${COLORS.textDark}" text-anchor="middle">${escapeSvg(title)}</text>
+  <text x="${OG_WIDTH / 2}" y="340" font-family="Inter" font-size="24" fill="${COLORS.textMuted}" text-anchor="middle">${subtitle}</text>
+  ${chips.length > 0 ? `<g filter="url(#shadow)">${chipElements}</g>` : ''}
 </svg>`
+}
+
+function getPageOgConfig(path: string): { title: string; chips: { label: string; color: string }[] } {
+  const pathNorm = path.replace(/\/$/, '') || '/'
+  const exact = PAGE_OG[pathNorm]
+  if (exact) return exact
+
+  if (pathNorm.startsWith('/games/') && pathNorm !== '/games') {
+    const gameId = pathNorm.replace('/games/', '')
+    const gameName = gameId.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    return { title: `${gameName} - Game`, chips: [{ label: 'Play', color: COLORS.mint }, { label: gameName, color: COLORS.peach }] }
+  }
+
+  const devToolsMatch = pathNorm.match(/^\/developer-tools\/(.+)$/)
+  if (devToolsMatch) {
+    const slug = devToolsMatch[1]
+    const title = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    return { title: `${title} | Dev Tools`, chips: [{ label: 'Developer Tools', color: COLORS.softBlue }] }
+  }
+
+  return { title: SITE_NAME, chips: [] }
 }
 
 function buildCommitSvg(data: {
@@ -191,6 +297,21 @@ export async function ogImageRoutes(fastify: FastifyInstance) {
     }
   })
 
+  fastify.get<{ Querystring: { path?: string } }>('/og-image/page', async (request, reply) => {
+    const path = (request.query.path || '/').replace(/\/$/, '') || '/'
+    try {
+      const config = getPageOgConfig(path)
+      const svg = buildPageSvg(path, config.title, config.chips)
+      const buffer = await svgToPng(svg)
+      reply.header('Content-Type', 'image/png')
+      reply.header('Cache-Control', 'public, max-age=86400, s-maxage=86400')
+      return reply.send(buffer)
+    } catch (err) {
+      fastify.log.error(err, 'Failed to generate page OG image')
+      return reply.code(500).send({ error: 'Failed to generate image' })
+    }
+  })
+
   fastify.get<{
     Querystring: { url: string; sha: string }
   }>('/og-image/commit', async (request, reply) => {
@@ -223,9 +344,8 @@ export async function ogImageRoutes(fastify: FastifyInstance) {
       (commit.stats as Record<string, number>)?.deletions ??
       files.reduce((s, f) => s + ((f.deletions as number) || 0), 0)
     const fileNames = files.map((f) => (f.filename as string) || (f.new_path as string) || 'unknown')
-    const dateStr = (commitObj?.author as Record<string, unknown>)?.date
-      ? new Date((commitObj.author as Record<string, unknown>).date as string).toLocaleDateString()
-      : ''
+    const authorDate = (commitObj?.author as Record<string, unknown> | undefined)?.date
+    const dateStr = authorDate ? new Date(authorDate as string).toLocaleDateString() : ''
 
     try {
       const svg = buildCommitSvg({

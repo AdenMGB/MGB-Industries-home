@@ -281,9 +281,9 @@ async function metaHandler(
     }
   }
 
-  // Ensure og:image for all pages (default for non-commit)
+  // Ensure og:image for all pages (context-aware for non-commit)
   if (!meta.image) {
-    meta = { ...meta, image: `${SITE_URL}/og-image.png` }
+    meta = { ...meta, image: `${SITE_URL}/og-image/page?path=${encodeURIComponent(pathOnly)}` }
   }
 
   const canonical = `${SITE_URL}${pathOnly}${request.url.includes('?') ? '?' + request.url.split('?')[1] : ''}`
