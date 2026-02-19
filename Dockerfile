@@ -65,22 +65,6 @@ COPY tsconfig*.json ./
 RUN mkdir -p /app/data/games /app/data/database && \
     chmod 755 /app/data
 
-# Create nginx map for crawler detection (included in http block)
-RUN printf 'map $http_user_agent $is_crawler {\n\
-    default 0;\n\
-    ~*facebookexternalhit 1;\n\
-    ~*Facebot 1;\n\
-    ~*Twitterbot 1;\n\
-    ~*Discordbot 1;\n\
-    ~*Slackbot 1;\n\
-    ~*LinkedInBot 1;\n\
-    ~*WhatsApp 1;\n\
-    ~*TelegramBot 1;\n\
-    ~*Pinterest 1;\n\
-    ~*Googlebot 1;\n\
-    ~*bingbot 1;\n\
-}\n' > /etc/nginx/http.d/00-crawler-map.conf
-
 # Create nginx configuration with API proxy
 # Note: www→non-www redirect should be done at the edge (Cloudflare, load balancer)
 # to avoid redirect issues when origin hostname differs from public domain
@@ -140,16 +124,8 @@ RUN printf 'server {\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
-    # SPA routing - proxy crawler requests to Node for dynamic meta injection\n\
+    # SPA routing\n\
     location / {\n\
-        if ($is_crawler = 1) {\n\
-            proxy_pass http://localhost:3001;\n\
-            proxy_http_version 1.1;\n\
-            proxy_set_header Host $host;\n\
-            proxy_set_header X-Real-IP $remote_addr;\n\
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
-            proxy_set_header X-Forwarded-Proto $scheme;\n\
-        }\n\
         try_files $uri $uri/ /index.html;\n\
     }\n\
     \n\
