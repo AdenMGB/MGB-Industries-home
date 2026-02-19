@@ -102,29 +102,33 @@ const STATIC_ROUTE_META: Record<string, PageMeta> = {
     title: 'Hash Generator',
     description: 'Generate MD5, SHA-1, SHA-256, SHA-384, and SHA-512 hashes.',
   },
+  '/developer-tools/git': {
+    title: 'Git Tools',
+    description: 'History, stats, search, file history, and branch compare for any public GitHub or GitLab repo.',
+  },
   '/developer-tools/git-history': {
-    title: 'Git History Visualizer',
+    title: 'Git History',
     description: 'View commit history with timeline and links to commits.',
+  },
+  '/developer-tools/git-stats': {
+    title: 'Git Stats',
+    description: 'Total commits and per-author breakdown.',
+  },
+  '/developer-tools/git-search': {
+    title: 'Git Search',
+    description: 'Search commits by author and date range.',
+  },
+  '/developer-tools/git-file-history': {
+    title: 'File History',
+    description: 'View commits that modified a specific file.',
+  },
+  '/developer-tools/git-compare': {
+    title: 'Branch Compare',
+    description: 'Compare branches and view commits ahead.',
   },
   '/developer-tools/git-commit': {
     title: 'Git Commit',
     description: 'View commit details and file diff.',
-  },
-  '/developer-tools/git-stats': {
-    title: 'Git Commit Stats',
-    description: 'Total commits and per-author breakdown.',
-  },
-  '/developer-tools/git-search': {
-    title: 'Git Commit Search',
-    description: 'Search commits by author and date range.',
-  },
-  '/developer-tools/git-file-history': {
-    title: 'Git File History',
-    description: 'View commits that modified a specific file.',
-  },
-  '/developer-tools/git-compare': {
-    title: 'Git Branch Compare',
-    description: 'Compare branches and view commits ahead.',
   },
   '/games': {
     title: 'Games',

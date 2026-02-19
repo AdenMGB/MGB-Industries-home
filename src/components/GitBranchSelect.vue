@@ -30,7 +30,7 @@ async function loadBranches() {
   if (!props.repoUrl.trim()) return
   loading.value = true
   error.value = ''
-  const { data, err } = await gitApi.getBranches(props.repoUrl)
+  const { data, error: err } = await gitApi.getBranches(props.repoUrl)
   loading.value = false
   if (err) {
     error.value = err

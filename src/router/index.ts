@@ -271,16 +271,36 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/developer-tools/git-history',
-    name: 'GitHistory',
-    component: () => import('@/pages/GitHistoryPage.vue'),
+    path: '/developer-tools/git',
+    name: 'GitTools',
+    component: () => import('@/pages/GitToolsPage.vue'),
     meta: {
       transition: 'slide-up',
       seo: {
-        title: 'Git History Visualizer',
-        description: 'View commit history with timeline and links to commits.',
+        title: 'Git Tools',
+        description: 'History, stats, search, file history, and branch compare for any public GitHub or GitLab repo.',
       },
     },
+  },
+  {
+    path: '/developer-tools/git-history',
+    redirect: (to) => ({ path: '/developer-tools/git', query: { ...to.query, tab: 'history' } }),
+  },
+  {
+    path: '/developer-tools/git-stats',
+    redirect: (to) => ({ path: '/developer-tools/git', query: { ...to.query, tab: 'stats' } }),
+  },
+  {
+    path: '/developer-tools/git-search',
+    redirect: (to) => ({ path: '/developer-tools/git', query: { ...to.query, tab: 'search' } }),
+  },
+  {
+    path: '/developer-tools/git-file-history',
+    redirect: (to) => ({ path: '/developer-tools/git', query: { ...to.query, tab: 'file-history' } }),
+  },
+  {
+    path: '/developer-tools/git-compare',
+    redirect: (to) => ({ path: '/developer-tools/git', query: { ...to.query, tab: 'compare' } }),
   },
   {
     path: '/developer-tools/git-commit',
@@ -291,54 +311,6 @@ const routes: RouteRecordRaw[] = [
       seo: {
         title: 'Git Commit',
         description: 'View commit details and file diff.',
-      },
-    },
-  },
-  {
-    path: '/developer-tools/git-stats',
-    name: 'GitStats',
-    component: () => import('@/pages/GitStatsPage.vue'),
-    meta: {
-      transition: 'slide-up',
-      seo: {
-        title: 'Git Commit Stats',
-        description: 'Total commits and per-author breakdown.',
-      },
-    },
-  },
-  {
-    path: '/developer-tools/git-search',
-    name: 'GitSearch',
-    component: () => import('@/pages/GitSearchPage.vue'),
-    meta: {
-      transition: 'slide-up',
-      seo: {
-        title: 'Git Commit Search',
-        description: 'Search commits by author and date range.',
-      },
-    },
-  },
-  {
-    path: '/developer-tools/git-file-history',
-    name: 'GitFileHistory',
-    component: () => import('@/pages/GitFileHistoryPage.vue'),
-    meta: {
-      transition: 'slide-up',
-      seo: {
-        title: 'Git File History',
-        description: 'View commits that modified a specific file.',
-      },
-    },
-  },
-  {
-    path: '/developer-tools/git-compare',
-    name: 'GitCompare',
-    component: () => import('@/pages/GitComparePage.vue'),
-    meta: {
-      transition: 'slide-up',
-      seo: {
-        title: 'Git Branch Compare',
-        description: 'Compare branches and view commits ahead.',
       },
     },
   },

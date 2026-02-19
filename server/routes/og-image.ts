@@ -70,12 +70,8 @@ const PAGE_OG: Record<string, { title: string; chips: { label: string; color: st
   '/developer-tools/regex-tester': { title: 'Regex Tester', chips: [{ label: 'Regex', color: COLORS.lavender }, { label: 'Test', color: COLORS.mint }] },
   '/developer-tools/jwt-decoder': { title: 'JWT Decoder', chips: [{ label: 'JWT', color: COLORS.softYellow }, { label: 'Decode', color: COLORS.peach }] },
   '/developer-tools/hash-generator': { title: 'Hash Generator', chips: [{ label: 'MD5', color: COLORS.coral }, { label: 'SHA', color: COLORS.mint }] },
-  '/developer-tools/git-history': { title: 'Git History', chips: [{ label: 'Commits', color: COLORS.softBlue }, { label: 'Timeline', color: COLORS.lavender }] },
+  '/developer-tools/git': { title: 'Git Tools', chips: [{ label: 'History', color: COLORS.softBlue }, { label: 'Stats', color: COLORS.lavender }, { label: 'Search', color: COLORS.mint }, { label: 'Compare', color: COLORS.peach }] },
   '/developer-tools/git-commit': { title: 'Git Commit', chips: [{ label: 'Commit', color: COLORS.softBlue }, { label: 'Diff', color: COLORS.peach }] },
-  '/developer-tools/git-stats': { title: 'Git Stats', chips: [{ label: 'Stats', color: COLORS.softBlue }, { label: 'Authors', color: COLORS.lavender }] },
-  '/developer-tools/git-search': { title: 'Git Search', chips: [{ label: 'Search', color: COLORS.softBlue }, { label: 'Commits', color: COLORS.mint }] },
-  '/developer-tools/git-file-history': { title: 'File History', chips: [{ label: 'File', color: COLORS.softBlue }, { label: 'History', color: COLORS.peach }] },
-  '/developer-tools/git-compare': { title: 'Branch Compare', chips: [{ label: 'Branches', color: COLORS.softBlue }, { label: 'Compare', color: COLORS.lavender }] },
   '/games': { title: 'Games', chips: [{ label: 'Play', color: COLORS.mint }, { label: 'Browser', color: COLORS.peach }, { label: 'Offline', color: COLORS.lavender }] },
   '/login': { title: 'Login', chips: [{ label: 'Sign in', color: COLORS.mint }] },
   '/signup': { title: 'Sign Up', chips: [{ label: 'Create account', color: COLORS.lavender }] },
@@ -143,24 +139,24 @@ function buildDefaultSvg(): string {
 }
 
 function buildPageSvg(path: string, title: string, chips: { label: string; color: string }[]): string {
-  const chipH = 52
-  const chipGap = 10
-  const chipStartY = 390
-  const chipFontSize = 13
-  const chipPadding = 14
-  const maxChips = 10
+  const chipH = 58
+  const chipW = 340
+  const chipGap = 12
+  const chipFontSize = 22
+  const maxChips = 4
   const shownChips = chips.slice(0, maxChips)
 
-  let chipX = 60
-  const chipElements = shownChips.map((c) => {
-    const labelTrunc = c.label.length > 10 ? c.label.slice(0, 8) + '…' : c.label
-    const w = Math.max(60, Math.min(110, labelTrunc.length * 9 + chipPadding * 2))
-    const el = `<g transform="translate(${chipX}, ${chipStartY})">
-      <rect x="0" y="0" width="${w}" height="${chipH}" rx="10" fill="${c.color}" fill-opacity="0.65" stroke="${c.color}" stroke-width="1.5"/>
-      <text x="${w / 2}" y="${chipH / 2 + 4}" font-family="Inter" font-size="${chipFontSize}" font-weight="600" fill="${COLORS.textDark}" text-anchor="middle">${escapeSvg(labelTrunc)}</text>
+  const totalChipsH = shownChips.length * (chipH + chipGap) - chipGap
+  const chipStartY = 362 + (Math.max(0, 250 - totalChipsH) / 2)
+
+  const chipElements = shownChips.map((c, i) => {
+    const labelTrunc = c.label.length > 14 ? c.label.slice(0, 12) + '…' : c.label
+    const y = chipStartY + i * (chipH + chipGap)
+    const x = (OG_WIDTH - chipW) / 2
+    return `<g transform="translate(${x}, ${y})">
+      <rect x="0" y="0" width="${chipW}" height="${chipH}" rx="14" fill="${c.color}" fill-opacity="0.65" stroke="${c.color}" stroke-width="2"/>
+      <text x="${chipW / 2}" y="${chipH / 2 + 7}" font-family="Inter" font-size="${chipFontSize}" font-weight="600" fill="${COLORS.textDark}" text-anchor="middle">${escapeSvg(labelTrunc)}</text>
     </g>`
-    chipX += w + chipGap
-    return el
   }).join('\n  ')
 
   const subtitle = path === '/' ? 'Open Source Developer &amp; Creative Technologist' : escapeSvg(SITE_NAME)
