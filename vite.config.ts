@@ -54,6 +54,10 @@ export default defineConfig(async () => {
           target: 'http://localhost:3001',
           changeOrigin: true,
         },
+        '/og-image': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
       },
     },
   }

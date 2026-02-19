@@ -13,6 +13,8 @@ import { conversionTrainerRoutes } from './routes/conversionTrainer.js'
 import { contactRoutes } from './routes/contact.js'
 import { seoRoutes } from './routes/seo.js'
 import { gitRoutes } from './routes/git.js'
+import { ogImageRoutes } from './routes/og-image.js'
+import { metaRoutes } from './routes/meta.js'
 
 export async function createServer() {
   const fastify = Fastify({
@@ -50,6 +52,8 @@ export async function createServer() {
   await fastify.register(contactRoutes)
   await fastify.register(seoRoutes)
   await fastify.register(gitRoutes)
+  await fastify.register(ogImageRoutes)
+  await fastify.register(metaRoutes)
 
   return fastify
 }

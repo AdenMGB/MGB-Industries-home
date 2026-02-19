@@ -3,10 +3,12 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, PhotoIcon } from '@heroicons/vue/24/outline'
 import { gitApi } from '@/api/git'
 import { parseGitUrl } from '@/utils/git-url'
 import GitShareLink from '@/components/GitShareLink.vue'
+import { setMeta } from '@/composables/useMeta'
+import { SITE_URL } from '@/config/seo'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,6 +86,17 @@ async function loadCommit() {
   const f = c.files as Record<string, unknown>[] | undefined
   files.value = Array.isArray(f) ? f : []
   selectedFileData.value = files.value[0] ?? null
+
+  const totalAdd = (c.stats as Record<string, number>)?.additions ?? files.value.reduce((s, f) => s + ((f.additions as number) || 0), 0)
+  const totalDel = (c.stats as Record<string, number>)?.deletions ?? files.value.reduce((s, f) => s + ((f.deletions as number) || 0), 0)
+  const fileNames = files.value.map((f) => fileName(f)).slice(0, 5).join(', ')
+  const desc = `${authorName.value} · ${shortSha.value} · +${totalAdd} −${totalDel} · ${files.value.length} file${files.value.length !== 1 ? 's' : ''}`
+  setMeta({
+    title: `Commit ${shortSha.value}`,
+    description: `${commitMessage.value} — ${desc}${fileNames ? ` — ${fileNames}` : ''}`,
+    image: `${SITE_URL}/og-image/commit?url=${encodeURIComponent(url)}&sha=${encodeURIComponent(hash)}`,
+    canonical: `${SITE_URL}/developer-tools/git-commit?url=${encodeURIComponent(url)}&sha=${encodeURIComponent(hash)}`,
+  })
 }
 
 watch(selectedFile, (idx) => {
@@ -113,6 +126,17 @@ function goBack() {
   } else {
     router.push('/developer-tools')
   }
+}
+
+function ogImageUrl(): string {
+  if (!repoUrl.value || !sha.value) return ''
+  const base = typeof window !== 'undefined' ? window.location.origin : SITE_URL
+  return `${base}/og-image/commit?url=${encodeURIComponent(repoUrl.value)}&sha=${encodeURIComponent(sha.value)}`
+}
+
+function openOgImage() {
+  const url = ogImageUrl()
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
 }
 </script>
 
@@ -151,8 +175,21 @@ function goBack() {
               <p class="text-sm text-gray-600 dark:text-gray-400">{{ authorName }} · {{ commitDate }}</p>
               <pre v-if="fullMessage !== commitMessage" class="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap mt-2 p-3 rounded-lg bg-gray-100/50 dark:bg-gray-700/50">{{ fullMessage }}</pre>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <GitShareLink v-if="repoUrl && sha" />
+              <button
+                v-if="repoUrl && sha"
+                @click="openOgImage"
+                :class="cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
+                  'text-soft-blue hover:bg-soft-blue/10 transition-all duration-200 transform hover:scale-105 active:scale-95',
+                  'focus:outline-none focus:ring-2 focus:ring-soft-blue/50',
+                )"
+                title="Generate social preview image"
+              >
+                <PhotoIcon class="w-5 h-5" />
+                Generate Preview Image
+              </button>
               <a
                 :href="commitUrl"
                 target="_blank"
