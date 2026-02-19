@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { cn } from '@/utils/cn'
@@ -310,6 +310,10 @@ const leaderboardMode = ref(parseFromQuery(route.query as Record<string, unknown
 const leaderboardConv = ref<ConversionType>(parseFromQuery(route.query as Record<string, unknown>, 'lbConv', VALID_CONV) ?? 'binary-standalone')
 const leaderboardLoading = ref(false)
 const leaderboardFullscreen = ref(route.query.lb === '1')
+
+const xpLeaderboard = ref<Array<{ rank: number; userName: string; totalXp: number; level: number }>>([])
+const xpLeaderboardLoading = ref(false)
+const xpLeaderboardFullscreen = ref(false)
 
 const XP_PER_LEVEL = 100
 const ACHIEVEMENTS = CONVERSION_TRAINER_ACHIEVEMENTS
@@ -715,6 +719,20 @@ async function loadLeaderboard() {
   }
 }
 
+async function loadXpLeaderboard() {
+  xpLeaderboardLoading.value = true
+  const res = await api.getConversionXpLeaderboard(20)
+  xpLeaderboardLoading.value = false
+  if (res.data) {
+    xpLeaderboard.value = res.data.leaderboard
+  }
+}
+
+function openXpLeaderboard() {
+  xpLeaderboardFullscreen.value = true
+  loadXpLeaderboard()
+}
+
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
@@ -809,6 +827,29 @@ function syncUrl() {
 
 // Sync state to URL (tab, game, conv, lb, lbMode, lbConv)
 watch([activeTab, gameType, conversionType, leaderboardMode, leaderboardConv, leaderboardFullscreen], syncUrl, { deep: true })
+
+// Enter to restart when game over
+let gameOverKeyHandler: ((e: KeyboardEvent) => void) | null = null
+watch(gameOver, (isOver) => {
+  if (gameOverKeyHandler) {
+    document.removeEventListener('keydown', gameOverKeyHandler)
+    gameOverKeyHandler = null
+  }
+  if (isOver) {
+    gameOverKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        startGame()
+      }
+    }
+    document.addEventListener('keydown', gameOverKeyHandler)
+  }
+})
+onBeforeUnmount(() => {
+  if (gameOverKeyHandler) {
+    document.removeEventListener('keydown', gameOverKeyHandler)
+  }
+})
 
 onMounted(() => {
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
@@ -1041,7 +1082,13 @@ onMounted(() => {
       <div v-show="activeTab === 'practice'" class="flex-1 flex min-h-0 overflow-hidden">
         <!-- Left sidebar: controls -->
         <aside class="w-64 shrink-0 flex flex-col gap-4 p-4 overflow-y-auto bg-soft-blue/30 dark:bg-soft-blue/10 border-r border-soft-blue/40">
-          <div v-if="isAuthenticated && progress" class="p-3 rounded-xl bg-cream/60 dark:bg-amber-900/20 border border-soft-yellow/40">
+          <button
+            v-if="isAuthenticated && progress"
+            type="button"
+            @click="openXpLeaderboard"
+            class="w-full p-3 rounded-xl bg-cream/60 dark:bg-amber-900/20 border border-soft-yellow/40 text-left transition-all duration-200 hover:scale-[1.02] hover:bg-cream/80 dark:hover:bg-amber-900/30 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            title="View XP leaderboard"
+          >
             <div class="flex justify-between text-sm mb-1">
               <span class="font-medium text-amber-800 dark:text-amber-200">Lv {{ progress.level }}</span>
               <span class="text-amber-700 dark:text-amber-300">{{ progress.totalXp }} XP</span>
@@ -1053,14 +1100,15 @@ onMounted(() => {
               <span v-if="progress.dailyStreak > 0" title="Consecutive days played">🔥 {{ progress.dailyStreak }} day streak</span>
               <span v-if="progress.bestClassicStreak > 0" title="Best streak in Classic mode">⚡ {{ progress.bestClassicStreak }} best</span>
             </div>
-          </div>
+          </button>
           <div v-else-if="!isAuthenticated" class="text-xs text-slate-600 dark:text-slate-400 p-2">
             <p class="mb-1.5">Sign in to earn XP and compete.</p>
-            <div class="flex flex-wrap gap-1.5">
+            <div class="flex flex-wrap gap-1.5 mb-1.5">
               <router-link :to="{ path: '/login', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign in</router-link>
               <span class="text-slate-400">·</span>
               <router-link :to="{ path: '/signup', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign up</router-link>
             </div>
+            <button type="button" @click="openXpLeaderboard" class="text-amber-600 dark:text-amber-400 hover:underline font-medium">View XP leaderboard</button>
           </div>
 
           <div>
@@ -1180,6 +1228,7 @@ onMounted(() => {
               <button type="button" @click="startGame" class="px-8 py-4 rounded-xl font-semibold bg-mint/50 text-emerald-800 dark:text-emerald-200 hover:bg-mint/70 transition-all duration-200 hover:scale-105 active:scale-95">
                 Play Again
               </button>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Press Enter to restart</p>
             </div>
 
             <template v-else>
@@ -1391,6 +1440,50 @@ onMounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- XP Leaderboard fullscreen modal -->
+          <Teleport to="body">
+            <div
+              v-if="xpLeaderboardFullscreen"
+              class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+              @click.self="xpLeaderboardFullscreen = false"
+            >
+              <div
+                class="w-full max-w-lg rounded-3xl p-8 bg-white/95 dark:bg-slate-800/95 border-2 border-slate-200/80 dark:border-slate-600/80 shadow-2xl flex flex-col max-h-[85vh]"
+                @click.stop
+              >
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-semibold text-amber-800 dark:text-amber-300 uppercase flex items-center gap-2">
+                    <AcademicCapIcon class="w-6 h-6" /> XP Leaderboard
+                  </h3>
+                  <button
+                    type="button"
+                    @click="xpLeaderboardFullscreen = false"
+                    class="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                    aria-label="Close"
+                  >
+                    <XMarkIcon class="w-5 h-5" />
+                  </button>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Top players by total XP earned.</p>
+                <div v-if="xpLeaderboardLoading" class="text-sm text-slate-500 py-4 text-center">Loading...</div>
+                <div v-else-if="xpLeaderboard.length === 0" class="text-sm text-slate-500 py-4 text-center">No players yet. Play to earn XP!</div>
+                <div v-else class="flex flex-col gap-4 min-h-0 overflow-y-auto">
+                  <div v-for="r in xpLeaderboard" :key="r.rank" class="flex items-center gap-3 py-3 px-4 rounded-xl bg-slate-50/80 dark:bg-slate-700/30">
+                    <span class="w-8 flex items-center justify-center shrink-0">
+                      <TrophyIconSolid v-if="r.rank === 1" class="w-6 h-6 text-amber-500" title="1st" />
+                      <TrophyIconSolid v-else-if="r.rank === 2" class="w-6 h-6 text-slate-400" title="2nd" />
+                      <TrophyIconSolid v-else-if="r.rank === 3" class="w-6 h-6 text-amber-700" title="3rd" />
+                      <span v-else class="text-slate-600 dark:text-slate-400 font-medium">{{ r.rank }}</span>
+                    </span>
+                    <span class="flex-1 truncate text-slate-800 dark:text-slate-200">{{ r.userName }}</span>
+                    <span class="text-amber-600 dark:text-amber-400 font-semibold">Lv {{ r.level }}</span>
+                    <span class="text-slate-600 dark:text-slate-400 text-sm">{{ r.totalXp }} XP</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Teleport>
 
           <!-- Leaderboard fullscreen plaque -->
           <Teleport to="body">

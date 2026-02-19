@@ -183,6 +183,38 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // Get XP leaderboard (public) - users ranked by total XP
+  fastify.get('/api/conversion-trainer/leaderboard/xp', async (request, reply) => {
+    try {
+      const { limit } = request.query as { limit?: string }
+      const limitVal = Math.min(parseInt(limit || '20', 10) || 20, 100)
+
+      const rows = db
+        .prepare(`
+          SELECT p.user_id, p.total_xp, p.level, u.name as user_name
+          FROM conversion_trainer_progress p
+          JOIN users u ON u.id = p.user_id
+          WHERE p.total_xp > 0
+          ORDER BY p.total_xp DESC
+          LIMIT ?
+        `)
+        .all(limitVal) as Array<{ user_id: string; total_xp: number; level: number; user_name: string }>
+
+      const leaderboard = rows.map((r, i) => ({
+        rank: i + 1,
+        userId: r.user_id,
+        userName: r.user_name,
+        totalXp: r.total_xp,
+        level: r.level,
+      }))
+
+      return reply.send({ leaderboard })
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.code(500).send({ error: 'Internal server error' })
+    }
+  })
+
   // Get leaderboard (public)
   fastify.get('/api/conversion-trainer/leaderboard', async (request, reply) => {
     try {

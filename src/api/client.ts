@@ -222,6 +222,18 @@ export const api = {
     }>(url)
   },
 
+  async getConversionXpLeaderboard(limit = 20) {
+    return request<{
+      leaderboard: Array<{
+        rank: number
+        userId: string
+        userName: string
+        totalXp: number
+        level: number
+      }>
+    }>(`/conversion-trainer/leaderboard/xp?limit=${limit}`)
+  },
+
   async getMyConversionScores() {
     return request<{ scores: Record<string, number> }>('/conversion-trainer/my-scores')
   },
