@@ -1228,7 +1228,7 @@ onMounted(() => {
               <button type="button" @click="startGame" class="px-8 py-4 rounded-xl font-semibold bg-mint/50 text-emerald-800 dark:text-emerald-200 hover:bg-mint/70 transition-all duration-200 hover:scale-105 active:scale-95">
                 Play Again
               </button>
-              <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Press Enter to restart</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Press Enter to restart the game</p>
             </div>
 
             <template v-else>
