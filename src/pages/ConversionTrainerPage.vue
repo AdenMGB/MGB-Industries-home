@@ -828,26 +828,31 @@ function syncUrl() {
 // Sync state to URL (tab, game, conv, lb, lbMode, lbConv)
 watch([activeTab, gameType, conversionType, leaderboardMode, leaderboardConv, leaderboardFullscreen], syncUrl, { deep: true })
 
-// Enter to restart when game over
-let gameOverKeyHandler: ((e: KeyboardEvent) => void) | null = null
-watch(gameOver, (isOver) => {
-  if (gameOverKeyHandler) {
-    document.removeEventListener('keydown', gameOverKeyHandler)
-    gameOverKeyHandler = null
+// Enter to start/restart; R to reset mid-game
+let gameKeyHandler: ((e: KeyboardEvent) => void) | null = null
+watch([() => activeTab.value, () => gameType.value, gameStarted, gameOver], ([tab, gt, started, over]) => {
+  if (gameKeyHandler) {
+    document.removeEventListener('keydown', gameKeyHandler)
+    gameKeyHandler = null
   }
-  if (isOver) {
-    gameOverKeyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
+  const inGame = tab === 'practice' && (started || over)
+  const onStartScreen = tab === 'practice' && ['speed-round', 'nibble-sprint', 'survival'].includes(gt) && !started
+  if (inGame || onStartScreen) {
+    gameKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && (over || onStartScreen)) {
+        e.preventDefault()
+        startGame()
+      } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault()
         startGame()
       }
     }
-    document.addEventListener('keydown', gameOverKeyHandler)
+    document.addEventListener('keydown', gameKeyHandler)
   }
 })
 onBeforeUnmount(() => {
-  if (gameOverKeyHandler) {
-    document.removeEventListener('keydown', gameOverKeyHandler)
+  if (gameKeyHandler) {
+    document.removeEventListener('keydown', gameKeyHandler)
   }
 })
 
@@ -1198,6 +1203,7 @@ onMounted(() => {
               >
                 Start {{ gameType === 'speed-round' ? '60s' : gameType === 'nibble-sprint' ? '30s' : '' }} Round
               </button>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Press Enter to start</p>
             </div>
           </div>
 
@@ -1228,7 +1234,14 @@ onMounted(() => {
               <button type="button" @click="startGame" class="px-8 py-4 rounded-xl font-semibold bg-mint/50 text-emerald-800 dark:text-emerald-200 hover:bg-mint/70 transition-all duration-200 hover:scale-105 active:scale-95">
                 Play Again
               </button>
-              <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Press Enter to restart</p>
+              <div class="mt-8 pt-4 border-t border-slate-200 dark:border-slate-600">
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  <span class="font-medium text-slate-600 dark:text-slate-300">Controls:</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 font-mono text-xs">R</kbd> Reset
+                  <span class="mx-2 text-slate-400">·</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 font-mono text-xs">Enter</kbd> Restart
+                </p>
+              </div>
             </div>
 
             <template v-else>
@@ -1336,6 +1349,15 @@ onMounted(() => {
               </Transition>
               <div v-if="showAnswer && !practiceFeedback" class="mt-4 text-slate-600 dark:text-slate-400">
                 Answer: <span class="font-mono text-emerald-600 dark:text-emerald-400 text-lg">{{ practiceQuestion.answer }}</span>
+              </div>
+
+              <div class="mt-8 pt-4 border-t border-slate-200 dark:border-slate-600">
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  <span class="font-medium text-slate-600 dark:text-slate-300">Controls:</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 font-mono text-xs">R</kbd> Reset
+                  <span class="mx-2 text-slate-400">·</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 font-mono text-xs">Enter</kbd> Restart (game over)
+                </p>
               </div>
             </template>
           </div>
