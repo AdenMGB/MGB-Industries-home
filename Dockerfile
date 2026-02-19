@@ -124,21 +124,27 @@ RUN printf 'server {\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
-    # SPA routing\n\
+    # Static assets (serve from disk, skip Node)\n\
+    location ~* \\.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {\n\
+        try_files $uri =404;\n\
+        expires 1y;\n\
+        add_header Cache-Control "public, immutable";\n\
+    }\n\
+    \n\
+    # Document requests: proxy to Node for meta-injected HTML (Discord, Twitter, etc.)\n\
     location / {\n\
-        try_files $uri $uri/ /index.html;\n\
+        proxy_pass http://127.0.0.1:3001;\n\
+        proxy_http_version 1.1;\n\
+        proxy_set_header Host $host;\n\
+        proxy_set_header X-Real-IP $remote_addr;\n\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+        proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
     # Security headers\n\
     add_header X-Frame-Options "SAMEORIGIN" always;\n\
     add_header X-Content-Type-Options "nosniff" always;\n\
     add_header X-XSS-Protection "1; mode=block" always;\n\
-    \n\
-    # Cache static assets\n\
-    location ~* \\.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {\n\
-        expires 1y;\n\
-        add_header Cache-Control "public, immutable";\n\
-    }\n\
 }\n' > /etc/nginx/http.d/default.conf && \
     # Update nginx.conf to use /tmp for pid file and ensure /run exists\n\
     sed -i 's|pid /var/run/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf 2>/dev/null || true

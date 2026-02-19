@@ -214,13 +214,6 @@ function injectMeta(html: string, meta: PageMeta, canonical: string): string {
   return result
 }
 
-const CRAWLER_UA =
-  /facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|WhatsApp|TelegramBot|Pinterest|Googlebot|bingbot/i
-
-function isCrawler(userAgent: string | undefined): boolean {
-  return !!(userAgent && CRAWLER_UA.test(userAgent))
-}
-
 async function getIndexHtmlPath(): Promise<string> {
   const distPath = join(process.cwd(), 'dist', 'index.html')
   const rootPath = join(process.cwd(), 'index.html')
@@ -234,10 +227,6 @@ async function metaHandler(
   reply: FastifyReply,
   fastify: FastifyInstance,
 ) {
-  if (!isCrawler(request.headers['user-agent'])) {
-    return reply.code(404).send()
-  }
-
   const path = request.url.split('?')[0] || '/'
   if (path.startsWith('/api') || path.startsWith('/og-image') || path === '/sitemap.xml' || path === '/robots.txt') {
     return reply.code(404).send()
@@ -290,6 +279,11 @@ async function metaHandler(
       title: SITE_NAME,
       description: 'Open source developer & creative technologist. Portfolio of projects, games, and contact.',
     }
+  }
+
+  // Ensure og:image for all pages (default for non-commit)
+  if (!meta.image) {
+    meta = { ...meta, image: `${SITE_URL}/og-image.png` }
   }
 
   const canonical = `${SITE_URL}${pathOnly}${request.url.includes('?') ? '?' + request.url.split('?')[1] : ''}`

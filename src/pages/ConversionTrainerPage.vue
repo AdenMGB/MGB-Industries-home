@@ -170,7 +170,7 @@ function handleBoxInput(index: number, raw: string) {
   let valid = isHex
     ? raw.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
     : raw.replace(/[^01]/g, '')
-  if (!isHex && valid.length === 0 && raw.length === 1 && /[2-9]/.test(raw)) valid = '1'
+  if (!isHex && valid.length === 0 && raw.length === 1 && /[2-9]/.test(raw)) valid = raw === '2' ? '0' : '1'
   if (valid.length === 0) {
     if (raw.length === 0) boxValues.value[index] = ''
     return
@@ -230,7 +230,7 @@ function handleBoxKeydown(index: number, e: KeyboardEvent) {
     let valid = isHex
       ? e.key.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
       : e.key.replace(/[^01]/g, '')
-    if (!isHex && valid.length === 0 && /[2-9]/.test(e.key)) valid = '1'
+    if (!isHex && valid.length === 0 && /[2-9]/.test(e.key)) valid = e.key === '2' ? '0' : '1'
     if (valid.length === 0) return
     boxValues.value[index] = valid
     animateBoxTyped(index)
@@ -482,7 +482,9 @@ function generatePracticeQuestion(): void {
 }
 
 function normalizeAnswer(input: string, mode: ConversionType): string {
-  const trimmed = input.trim().toLowerCase()
+  let trimmed = input.trim().toLowerCase()
+  // Alias: "2" is accepted as "0" (zero) - common typo/numpad
+  if (trimmed === '2') trimmed = '0'
   if (mode === 'ipv4-full') {
     return trimmed
   }
