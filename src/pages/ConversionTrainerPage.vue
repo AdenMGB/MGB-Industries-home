@@ -729,10 +729,12 @@ const xpProgress = computed(() => {
 })
 
 watch(activeTab, (tab) => {
-  if (tab === 'practice' && isAuthenticated.value) {
-    loadProgress()
-    loadAchievements()
+  if (tab === 'practice') {
     loadLeaderboard()
+    if (isAuthenticated.value) {
+      loadProgress()
+      loadAchievements()
+    }
   }
 })
 
@@ -810,10 +812,10 @@ onMounted(() => {
   gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
   gsap.fromTo('.tool-card', { opacity: 0, y: 30, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, delay: 0.1, ease: premiumEase })
   generatePracticeQuestion()
+  loadLeaderboard()
   if (isAuthenticated.value) {
     loadProgress()
     loadAchievements()
-    loadLeaderboard()
   }
   syncUrl()
 })
@@ -1364,15 +1366,15 @@ onMounted(() => {
                 <option v-for="ct in conversionTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
               </select>
             </div>
-            <div v-if="!isAuthenticated" class="text-xs text-slate-500 py-2">
-              <p class="mb-1.5">Sign in to compete.</p>
+            <div v-if="!isAuthenticated" class="text-xs text-slate-500 py-1.5 mb-1">
+              <p class="mb-1">Sign in to save a score.</p>
               <div class="flex flex-wrap gap-2">
                 <router-link :to="{ path: '/login', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign in</router-link>
                 <span class="text-slate-400">·</span>
                 <router-link :to="{ path: '/signup', query: { redirect: route.fullPath } }" class="text-mint dark:text-emerald-400 hover:underline font-medium">Sign up</router-link>
               </div>
             </div>
-            <div v-else-if="leaderboardLoading" class="text-xs text-slate-500 py-2">Loading...</div>
+            <div v-if="leaderboardLoading" class="text-xs text-slate-500 py-2">Loading...</div>
             <div v-else-if="leaderboard.length === 0" class="text-xs text-slate-500 py-2">No scores yet.</div>
             <div v-else class="overflow-y-auto flex-1 min-h-0 text-sm">
               <div v-for="r in leaderboard" :key="r.rank" class="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-700/50">
@@ -1424,14 +1426,14 @@ onMounted(() => {
                     <option v-for="ct in conversionTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
                   </select>
                 </div>
-                <div v-if="!isAuthenticated" class="text-sm text-slate-500 py-4 text-center">
-                  <p class="mb-3">Sign in to compete.</p>
+                <div v-if="!isAuthenticated" class="text-sm text-slate-500 py-3 mb-2 text-center rounded-xl bg-slate-50/80 dark:bg-slate-700/30">
+                  <p class="mb-2">Sign in to save a score.</p>
                   <div class="flex justify-center gap-3">
                     <router-link :to="{ path: '/login', query: { redirect: route.fullPath } }" class="px-4 py-2 rounded-xl bg-mint/30 text-emerald-800 dark:text-emerald-200 hover:bg-mint/50 font-medium transition-colors">Sign in</router-link>
                     <router-link :to="{ path: '/signup', query: { redirect: route.fullPath } }" class="px-4 py-2 rounded-xl bg-mint/30 text-emerald-800 dark:text-emerald-200 hover:bg-mint/50 font-medium transition-colors">Sign up</router-link>
                   </div>
                 </div>
-                <div v-else-if="leaderboardLoading" class="text-sm text-slate-500 py-4 text-center">Loading...</div>
+                <div v-if="leaderboardLoading" class="text-sm text-slate-500 py-4 text-center">Loading...</div>
                 <div v-else-if="leaderboard.length === 0" class="text-sm text-slate-500 py-4 text-center">No scores yet.</div>
                 <div v-else class="flex flex-col gap-4 min-h-0">
                   <div class="overflow-y-auto flex-1 min-h-0 text-base space-y-1">
