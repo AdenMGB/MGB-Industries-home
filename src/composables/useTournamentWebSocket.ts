@@ -1,37 +1,17 @@
 /**
- * WebSocket connection for multiplayer - uses callback pattern so state lives in the component.
- * Call connect(roomId, participantId) when you have the IDs. No lifecycle hooks - component handles cleanup.
+ * WebSocket connection for tournaments - uses callback pattern.
+ * Connect with tournamentId and participantId.
  */
 import { shallowRef } from 'vue'
 import { getWsBase } from '@/utils/wsBase'
 
-export interface ParticipantInfo {
-  id: string
-  displayName: string
-  role: string
-  score: number
-  isHost?: boolean
-}
-
-export interface RoomConfig {
-  mode: string
-  conv: string
-  goalType: string
-  goalValue: Record<string, unknown>
-}
-
-export interface WsMessage {
-  type: string
-  payload?: unknown
-}
-
-export interface MultiplayerWsCallbacks {
+export interface TournamentWsCallbacks {
   onRoomState: (data: {
-    roomId: string
+    tournamentId: string
+    bracketIndex: number
     status: string
-    config: RoomConfig
-    participants: ParticipantInfo[]
-    showLeaderboard: boolean
+    config: Record<string, unknown>
+    participants: Array<{ id: string; displayName: string; score: number }>
     syncRound: number
   }) => void
   onSyncRoundComplete?: (data: { round: number; allReady: boolean }) => void
@@ -39,21 +19,20 @@ export interface MultiplayerWsCallbacks {
   onQuestion?: (data: { value: string; index: number }) => void
   onAnswerResult?: (data: { correct: boolean }) => void
   onLeaderboard?: (data: Array<{ rank: number; displayName: string; score: number; isGuest: boolean }>) => void
-  onChatMessage?: (data: { participantId: string; displayName: string; message: string; timestamp: string }) => void
   onGameEnded?: (data: { leaderboard: Array<{ rank: number; displayName: string; score: number; isGuest: boolean }>; reason?: string }) => void
 }
 
-export function createMultiplayerWebSocket() {
+export function createTournamentWebSocket() {
   const ws = shallowRef<WebSocket | null>(null)
-  let callbacks: MultiplayerWsCallbacks | null = null
+  let callbacks: TournamentWsCallbacks | null = null
 
-  function setCallbacks(cb: MultiplayerWsCallbacks) {
+  function setCallbacks(cb: TournamentWsCallbacks) {
     callbacks = cb
   }
 
-  function connect(roomId: string, participantId: string): Promise<void> {
+  function connect(tournamentId: string, participantId: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${getWsBase()}/ws/multiplayer/${roomId}?participantId=${encodeURIComponent(participantId)}`
+      const wsUrl = `${getWsBase()}/ws/tournament/${tournamentId}?participantId=${encodeURIComponent(participantId)}`
       try {
         const socket = new WebSocket(wsUrl)
         ws.value = socket
@@ -62,20 +41,17 @@ export function createMultiplayerWebSocket() {
 
         socket.onmessage = (event) => {
           try {
-            const msg = JSON.parse(event.data) as WsMessage
+            const msg = JSON.parse(event.data) as { type: string; payload?: unknown }
             const cb = callbacks
             if (!cb) return
 
             switch (msg.type) {
-              case 'room_state': {
-                const p = msg.payload as Parameters<MultiplayerWsCallbacks['onRoomState']>[0]
-                cb.onRoomState(p)
+              case 'room_state':
+                cb.onRoomState(msg.payload as Parameters<TournamentWsCallbacks['onRoomState']>[0])
                 break
-              }
-              case 'sync_round_complete': {
+              case 'sync_round_complete':
                 cb.onSyncRoundComplete?.(msg.payload as { round: number; allReady: boolean })
                 break
-              }
               case 'game_started':
                 cb.onGameStarted?.()
                 break
@@ -88,9 +64,6 @@ export function createMultiplayerWebSocket() {
               case 'leaderboard':
                 cb.onLeaderboard?.(msg.payload as Array<{ rank: number; displayName: string; score: number; isGuest: boolean }>)
                 break
-              case 'chat_message':
-                cb.onChatMessage?.(msg.payload as { participantId: string; displayName: string; message: string; timestamp: string })
-                break
               case 'game_ended':
                 cb.onGameEnded?.(msg.payload as { leaderboard: Array<{ rank: number; displayName: string; score: number; isGuest: boolean }>; reason?: string })
                 break
@@ -102,13 +75,8 @@ export function createMultiplayerWebSocket() {
           }
         }
 
-        socket.onclose = () => {
-          ws.value = null
-        }
-
-        socket.onerror = () => {
-          reject(new Error('WebSocket connection failed'))
-        }
+        socket.onclose = () => { ws.value = null }
+        socket.onerror = () => reject(new Error('WebSocket connection failed'))
       } catch (err) {
         reject(err)
       }
@@ -129,11 +97,5 @@ export function createMultiplayerWebSocket() {
     }
   }
 
-  return {
-    ws,
-    setCallbacks,
-    connect,
-    disconnect,
-    send,
-  }
+  return { ws, setCallbacks, connect, disconnect, send }
 }

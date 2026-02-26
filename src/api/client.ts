@@ -406,4 +406,63 @@ export const api = {
       body: JSON.stringify({ roomCode, participantId }),
     })
   },
+
+  // Tournaments (admin create, join via link only)
+  async createTournament(data: {
+    name: string
+    mode: string
+    conv?: string
+    goalType: string
+    goalValue: { firstTo?: number; timeSeconds?: number; lives?: number; streak?: boolean }
+    bracketSize: number
+    maxPlayers: number
+  }) {
+    return request<{ tournamentId: string; joinLink: string; message: string }>(
+      '/conversion-trainer/tournament/create',
+      { method: 'POST', body: JSON.stringify(data) }
+    )
+  },
+
+  async getTournament(tournamentId: string) {
+    return request<{
+      id: string
+      name: string
+      config: Record<string, unknown>
+      bracketSize: number
+      maxPlayers: number
+      status: string
+      participantCount: number
+      canStart?: boolean
+    }>(`/conversion-trainer/tournament/${encodeURIComponent(tournamentId)}`)
+  },
+
+  async joinTournament(tournamentId: string, displayName: string) {
+    return request<{
+      tournamentId: string
+      participantId: string
+      bracketIndex: number
+    }>('/conversion-trainer/tournament/join', {
+      method: 'POST',
+      body: JSON.stringify({ tournamentId, displayName }),
+    })
+  },
+
+  async startTournament(tournamentId: string) {
+    return request<{ message: string }>(
+      `/conversion-trainer/tournament/${encodeURIComponent(tournamentId)}/start`,
+      { method: 'POST' }
+    )
+  },
+
+  async getTournamentBrackets(tournamentId: string) {
+    return request<{
+      brackets: Array<{ bracketIndex: number; status: string; participantCount: number }>
+    }>(`/conversion-trainer/tournament/${encodeURIComponent(tournamentId)}/brackets`)
+  },
+
+  async getTournamentBracketParticipants(tournamentId: string, bracketIndex: number) {
+    return request<{
+      participants: Array<{ participantUuid: string; displayName: string; score: number }>
+    }>(`/conversion-trainer/tournament/${encodeURIComponent(tournamentId)}/bracket/${bracketIndex}/participants`)
+  },
 }

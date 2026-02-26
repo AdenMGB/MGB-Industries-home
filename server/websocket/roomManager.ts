@@ -378,7 +378,8 @@ export function validateAnswer(
   const q = room.questions[p.currentQuestionIndex]
   if (!q) return { correct: false, nextQuestion: null }
 
-  const normalized = normalizeAnswer(answer, room.config.conv)
+  const bits = room.config.mode === 'nibble-sprint' ? 4 : 8
+  const normalized = normalizeAnswer(answer, room.config.conv, bits)
   const correct = normalized === q.answer.toLowerCase()
 
   if (correct) {
@@ -400,7 +401,7 @@ export function validateAnswer(
   return { correct, nextQuestion }
 }
 
-function normalizeAnswer(input: string, conv: string): string {
+function normalizeAnswer(input: string, conv: string, bits = 8): string {
   let trimmed = input.trim().toLowerCase()
   if (trimmed === '2') trimmed = '0'
   if (conv === 'ipv4-full') return trimmed
@@ -411,6 +412,18 @@ function normalizeAnswer(input: string, conv: string): string {
   if (conv === 'ipv6-hextet') {
     const cleaned = trimmed.startsWith('0x') ? trimmed.slice(2) : trimmed
     return cleaned.toUpperCase().padStart(4, '0')
+  }
+  if (conv === 'binary-standalone' || conv === 'binary-octet') {
+    const binaryOnly = trimmed.replace(/[^01]/g, '')
+    if (binaryOnly.length === 0) {
+      const num = parseInt(trimmed, 10)
+      const max = bits === 4 ? 15 : 255
+      if (!Number.isNaN(num) && num >= 0 && num <= max) {
+        return num.toString(2).padStart(bits, '0')
+      }
+      return trimmed
+    }
+    return binaryOnly.padStart(bits, '0').slice(-bits)
   }
   return trimmed
 }

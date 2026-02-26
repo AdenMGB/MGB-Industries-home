@@ -12,6 +12,7 @@ import { gameSaveRoutes } from './routes/gameSaves.js'
 import { gameListRoutes } from './routes/games.js'
 import { conversionTrainerRoutes } from './routes/conversionTrainer.js'
 import { multiplayerConversionRoutes } from './routes/multiplayerConversion.js'
+import { tournamentConversionRoutes } from './routes/tournamentConversion.js'
 import { contactRoutes } from './routes/contact.js'
 import { seoRoutes } from './routes/seo.js'
 import { gitRoutes } from './routes/git.js'
@@ -53,6 +54,7 @@ export async function createServer() {
   await fastify.register(gameListRoutes)
   await fastify.register(conversionTrainerRoutes)
   await fastify.register(multiplayerConversionRoutes)
+  await fastify.register(tournamentConversionRoutes)
   await fastify.register(contactRoutes)
   await fastify.register(seoRoutes)
   await fastify.register(gitRoutes)

@@ -20,6 +20,7 @@ import {
   ChatBubbleLeftRightIcon,
   ClipboardDocumentIcon,
   TrophyIcon,
+  PlusIcon,
 } from '@heroicons/vue/24/outline'
 import type { UserWithoutPassword } from '../../server/types/index.js'
 
@@ -79,6 +80,19 @@ const isEditScoreModalOpen = ref(false)
 const isDeleteScoreModalOpen = ref(false)
 const selectedScore = ref<ConversionScore | null>(null)
 const editScoreForm = ref({ score: 0 })
+
+// Tournament creation
+const tournamentForm = ref({
+  name: '',
+  mode: 'classic',
+  conv: 'binary-standalone',
+  goalType: 'first_to',
+  goalValue: { firstTo: 10, timeSeconds: 60, lives: 3 },
+  bracketSize: 32,
+  maxPlayers: 10000,
+})
+const tournamentCreating = ref(false)
+const tournamentResult = ref<{ joinLink: string; tournamentId: string } | null>(null)
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
@@ -148,6 +162,46 @@ async function handleDeleteScore() {
     }
   } catch (err) {
     actionResult.value = { type: 'error', message: err instanceof Error ? err.message : 'Failed to delete' }
+  }
+}
+
+async function createTournament() {
+  tournamentCreating.value = true
+  tournamentResult.value = null
+  try {
+    const g: Record<string, unknown> = {}
+    if (tournamentForm.value.goalType === 'first_to') g.firstTo = tournamentForm.value.goalValue.firstTo ?? 10
+    if (['most_in_time', 'timed'].includes(tournamentForm.value.goalType)) g.timeSeconds = tournamentForm.value.goalValue.timeSeconds ?? 60
+    if (tournamentForm.value.goalType === 'survival') g.lives = tournamentForm.value.goalValue.lives ?? 3
+    if (tournamentForm.value.goalType === 'streak') g.streak = true
+
+    const res = await api.createTournament({
+      name: tournamentForm.value.name,
+      mode: tournamentForm.value.mode,
+      conv: tournamentForm.value.conv,
+      goalType: tournamentForm.value.goalType,
+      goalValue: g,
+      bracketSize: tournamentForm.value.bracketSize,
+      maxPlayers: tournamentForm.value.maxPlayers,
+    })
+    if (res.error) {
+      actionResult.value = { type: 'error', message: res.error }
+    } else if (res.data) {
+      tournamentResult.value = { joinLink: res.data.joinLink, tournamentId: res.data.tournamentId }
+      actionResult.value = { type: 'success', message: 'Tournament created. Share the link to invite players.' }
+      router.push({ name: 'ConversionTrainerTournamentJoin', params: { tournamentId: res.data.tournamentId } })
+    }
+  } catch (err) {
+    actionResult.value = { type: 'error', message: err instanceof Error ? err.message : 'Failed to create tournament' }
+  } finally {
+    tournamentCreating.value = false
+  }
+}
+
+function copyTournamentLink() {
+  if (tournamentResult.value) {
+    navigator.clipboard.writeText(tournamentResult.value.joinLink)
+    actionResult.value = { type: 'success', message: 'Link copied to clipboard' }
   }
 }
 
@@ -559,6 +613,92 @@ function copyToClipboard(text: string) {
         >
           <p class="text-gray-600 dark:text-gray-400">No contact messages yet</p>
         </div>
+      </div>
+
+      <!-- Create Tournament -->
+      <div class="card p-6 md:p-8 rounded-xl bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 mb-8">
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+          <PlusIcon class="w-6 h-6 text-mint" />
+          Create Tournament
+        </h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Create a tournament (admin only). Share the link to invite players. Up to 10,000 players in configurable brackets. Each bracket gets the same questions internally; different brackets get different questions.
+        </p>
+        <div v-if="tournamentResult" class="p-4 rounded-xl bg-mint/20 dark:bg-mint/10 border border-mint/30 mb-4">
+          <p class="text-sm font-medium text-emerald-800 dark:text-emerald-200 mb-2">Tournament created!</p>
+          <div class="flex items-center gap-2">
+            <input
+              :value="tournamentResult.joinLink"
+              readonly
+              class="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-mono"
+            />
+            <button @click="copyTournamentLink" class="p-2 rounded-lg bg-mint/30 hover:bg-mint/50 transition-colors" title="Copy link">
+              <ClipboardDocumentIcon class="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tournament name</label>
+            <input v-model="tournamentForm.name" type="text" placeholder="e.g. Weekly Challenge" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Game mode</label>
+            <select v-model="tournamentForm.mode" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700">
+              <option value="classic">Classic</option>
+              <option value="speed-round">Speed Round</option>
+              <option value="survival">Survival</option>
+              <option value="streak-challenge">Streak Challenge</option>
+              <option value="nibble-sprint">Nibble Sprint</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Conversion type</label>
+            <select v-model="tournamentForm.conv" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700">
+              <option value="binary-standalone">Binary</option>
+              <option value="hex-standalone">Hex</option>
+              <option value="ipv4-full">IPv4</option>
+              <option value="ipv6-hextet">IPv6</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Goal</label>
+            <select v-model="tournamentForm.goalType" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700">
+              <option value="first_to">First to N correct</option>
+              <option value="most_in_time">Most in time limit</option>
+              <option value="survival">Survival (lives)</option>
+              <option value="streak">Best streak</option>
+              <option value="timed">Timed</option>
+            </select>
+          </div>
+          <div v-if="tournamentForm.goalType === 'first_to'">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First to</label>
+            <input v-model.number="tournamentForm.goalValue.firstTo" type="number" min="1" max="100" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600" />
+          </div>
+          <div v-if="['most_in_time','timed'].includes(tournamentForm.goalType)">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time (seconds)</label>
+            <input v-model.number="tournamentForm.goalValue.timeSeconds" type="number" min="10" max="600" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600" />
+          </div>
+          <div v-if="tournamentForm.goalType === 'survival'">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lives</label>
+            <input v-model.number="tournamentForm.goalValue.lives" type="number" min="1" max="10" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bracket size</label>
+            <input v-model.number="tournamentForm.bracketSize" type="number" min="2" max="256" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max players</label>
+            <input v-model.number="tournamentForm.maxPlayers" type="number" min="2" max="10000" class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600" />
+          </div>
+        </div>
+        <button
+          @click="createTournament"
+          :disabled="!tournamentForm.name.trim() || tournamentCreating"
+          class="px-6 py-3 rounded-xl font-semibold bg-mint/60 text-emerald-800 dark:text-emerald-200 hover:bg-mint/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {{ tournamentCreating ? 'Creating...' : 'Create Tournament' }}
+        </button>
       </div>
 
       <!-- Conversion Trainer Scores -->

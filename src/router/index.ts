@@ -139,6 +139,30 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/developer-tools/conversion-trainer/tournament',
+    name: 'ConversionTrainerTournament',
+    component: () => import('@/pages/ConversionTrainerTournamentPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Tournament',
+        description: 'Join a conversion trainer tournament. Up to 10,000 players in configurable brackets.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/conversion-trainer/tournament/:tournamentId',
+    name: 'ConversionTrainerTournamentJoin',
+    component: () => import('@/pages/ConversionTrainerTournamentPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Join Tournament',
+        description: 'Join a conversion trainer tournament.',
+      },
+    },
+  },
+  {
     path: '/developer-tools/number-to-hex',
     name: 'NumberToHex',
     component: () => import('@/pages/NumberToHexPage.vue'),

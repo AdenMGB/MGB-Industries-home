@@ -909,13 +909,22 @@ onMounted(() => {
           <p class="text-base text-gray-600 dark:text-gray-400">
             Practice mental binary and hex conversion with calculator, reference table, and quiz games.
           </p>
-          <router-link
-            to="/developer-tools/conversion-trainer/multiplayer"
-            class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-lavender/40 text-violet-800 dark:text-violet-200 hover:bg-lavender/60 transition-all text-sm font-medium"
-          >
-            <UserGroupIcon class="w-4 h-4" />
-            Multiplayer (1v1 or up to 32)
-          </router-link>
+          <div class="flex flex-wrap gap-4 mt-4">
+            <router-link
+              to="/developer-tools/conversion-trainer/multiplayer"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-lavender/40 text-violet-800 dark:text-violet-200 hover:bg-lavender/60 transition-all text-sm font-medium"
+            >
+              <UserGroupIcon class="w-4 h-4" />
+              Multiplayer (1v1 or up to 32)
+            </router-link>
+            <router-link
+              to="/developer-tools/conversion-trainer/tournament"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-100/50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 hover:bg-amber-200/50 transition-all text-sm font-medium"
+            >
+              <TrophyIcon class="w-4 h-4" />
+              Tournaments (up to 10,000)
+            </router-link>
+          </div>
         </div>
 
         <!-- Tabs -->
