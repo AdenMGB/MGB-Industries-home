@@ -322,4 +322,88 @@ export const api = {
       method: 'DELETE',
     })
   },
+
+  // Multiplayer Conversion Trainer
+  async createMultiplayerRoom(data: {
+    mode: string
+    conv?: string
+    goalType: string
+    goalValue: { firstTo?: number; timeSeconds?: number; lives?: number; streak?: boolean }
+    visibility?: string
+    password?: string
+    maxPlayers?: number
+    showLeaderboard?: boolean
+    showPowerTable?: boolean
+    displayName: string
+  }) {
+    return request<{
+      roomId: string
+      roomCode: string
+      participantId: string
+      config: Record<string, unknown>
+      visibility: string
+      maxPlayers: number
+      showLeaderboard: boolean
+    }>('/conversion-trainer/multiplayer/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async getMultiplayerRoom(code: string) {
+    return request<{
+      roomId: string
+      mode: string
+      conv: string
+      goalType: string
+      goalValue: Record<string, unknown>
+      visibility: string
+      hasPassword: boolean
+      maxPlayers: number
+      showLeaderboard: boolean
+      status: string
+    }>(`/conversion-trainer/multiplayer/room/${encodeURIComponent(code)}`)
+  },
+
+  async joinMultiplayerRoom(data: {
+    roomCode: string
+    password?: string
+    displayName: string
+    asSpectator?: boolean
+  }) {
+    return request<{
+      roomId: string
+      participantId: string
+      config: Record<string, unknown>
+      status: string
+      participants: Array<{ id: string; displayName: string; role: string; score: number }>
+    }>('/conversion-trainer/multiplayer/join', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async getMultiplayerLobbies() {
+    return request<{
+      lobbies: Array<{
+        roomId: string
+        mode: string
+        conv: string
+        goalType: string
+        goalValue: Record<string, unknown>
+        visibility: string
+        hasPassword: boolean
+        maxPlayers: number
+        playerCount: number
+        createdAt: string
+      }>
+    }>('/conversion-trainer/multiplayer/lobbies')
+  },
+
+  async startMultiplayerGame(roomCode: string, participantId: string) {
+    return request<{ status: string; syncRound: number }>('/conversion-trainer/multiplayer/start', {
+      method: 'POST',
+      body: JSON.stringify({ roomCode, participantId }),
+    })
+  },
 }

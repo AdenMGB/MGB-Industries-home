@@ -19,6 +19,7 @@ import {
   BoltIcon,
   AcademicCapIcon,
   StarIcon,
+  UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import { HeartIcon as HeartIconSolid, TrophyIcon as TrophyIconSolid } from '@heroicons/vue/24/solid'
 import { CONVERSION_TRAINER_ACHIEVEMENTS } from '@/config/conversionTrainerAchievements'
@@ -908,6 +909,13 @@ onMounted(() => {
           <p class="text-base text-gray-600 dark:text-gray-400">
             Practice mental binary and hex conversion with calculator, reference table, and quiz games.
           </p>
+          <router-link
+            to="/developer-tools/conversion-trainer/multiplayer"
+            class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-lavender/40 text-violet-800 dark:text-violet-200 hover:bg-lavender/60 transition-all text-sm font-medium"
+          >
+            <UserGroupIcon class="w-4 h-4" />
+            Multiplayer (1v1 or up to 32)
+          </router-link>
         </div>
 
         <!-- Tabs -->

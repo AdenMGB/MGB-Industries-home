@@ -16,6 +16,7 @@ import {
   ClockIcon,
   MagnifyingGlassIcon,
   SwatchIcon,
+  UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronRightIcon, TrophyIcon as TrophyIconSolid } from '@heroicons/vue/24/solid'
 import { CONVERSION_TRAINER_ACHIEVEMENTS } from '@/config/conversionTrainerAchievements'
@@ -32,6 +33,7 @@ const categories = [
     title: 'Learn & Practice',
     tools: [
       { name: 'Conversion Trainer', description: 'Practice mental binary and hex conversion with calculator, reference table, and quiz games.', path: '/developer-tools/conversion-trainer', icon: AcademicCapIcon, accent: 'mint' },
+      { name: 'Conversion Trainer Multiplayer', description: 'Play conversion trainer with friends. Real-time 1v1 or up to 32 players with shareable links.', path: '/developer-tools/conversion-trainer/multiplayer', icon: UserGroupIcon, accent: 'lavender' },
     ],
   },
   {

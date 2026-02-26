@@ -5,11 +5,13 @@ import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { databasePlugin } from './plugins/database.js'
 import { authPlugin } from './plugins/auth.js'
+import { websocketPlugin } from './plugins/websocket.js'
 import { authRoutes } from './routes/auth.js'
 import { userRoutes } from './routes/users.js'
 import { gameSaveRoutes } from './routes/gameSaves.js'
 import { gameListRoutes } from './routes/games.js'
 import { conversionTrainerRoutes } from './routes/conversionTrainer.js'
+import { multiplayerConversionRoutes } from './routes/multiplayerConversion.js'
 import { contactRoutes } from './routes/contact.js'
 import { seoRoutes } from './routes/seo.js'
 import { gitRoutes } from './routes/git.js'
@@ -32,6 +34,7 @@ export async function createServer() {
   // Register plugins (database must be first)
   await fastify.register(databasePlugin)
   await fastify.register(authPlugin)
+  await fastify.register(websocketPlugin)
 
   // Serve game files from data/games at /games/
   const gamesRoot = process.env.GAMES_BASE || join(process.cwd(), 'data', 'games')
@@ -49,6 +52,7 @@ export async function createServer() {
   await fastify.register(gameSaveRoutes)
   await fastify.register(gameListRoutes)
   await fastify.register(conversionTrainerRoutes)
+  await fastify.register(multiplayerConversionRoutes)
   await fastify.register(contactRoutes)
   await fastify.register(seoRoutes)
   await fastify.register(gitRoutes)

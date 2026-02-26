@@ -59,9 +59,11 @@ onMounted(() => {
     <MorphingNav />
 
     <!-- Page Content with Transitions -->
-    <PageTransition>
-      <RouterView />
-    </PageTransition>
+    <RouterView v-slot="{ Component }">
+      <PageTransition>
+        <component :is="Component" v-if="Component" />
+      </PageTransition>
+    </RouterView>
 
     <!-- Toast notifications -->
     <Toast />

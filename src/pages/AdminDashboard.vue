@@ -159,28 +159,28 @@ onMounted(async () => {
 
   // Check auth in parallel
   await checkAuth()
-  
+
   // Redirect if not admin (after auth check completes)
   if (!isAdmin.value) {
     router.push('/account')
     return
   }
-  
+
   await nextTick()
-  
+
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
   gsap.set('.stat-card', { opacity: 0, y: 20, scale: 0.98 })
   gsap.set('[data-user-card]', { opacity: 0, y: 20, scale: 0.98 })
-  
+
   const tl = gsap.timeline({ defaults: { ease: premiumEase } })
-  
+
   tl.to('.page-header', {
     opacity: 1,
     y: 0,
     scale: 1,
     duration: 0.6,
   }, 0)
-  
+
   tl.to('.stat-card', {
     opacity: 1,
     y: 0,
@@ -192,7 +192,7 @@ onMounted(async () => {
 
   await nextTick()
   ScrollTrigger.refresh()
-  
+
   gsap.to('[data-user-card]', {
     opacity: 1,
     y: 0,

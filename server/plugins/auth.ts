@@ -29,6 +29,22 @@ export async function authenticate(
   }
 }
 
+// Optional auth - sets user if valid token, does not fail if missing/invalid
+export async function optionalAuthenticate(
+  request: FastifyRequest,
+  _reply: FastifyReply,
+) {
+  const authHeader = request.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return
+  const token = authHeader.substring(7)
+  try {
+    const payload = await verifyJWT(token)
+    request.user = payload
+  } catch {
+    /* ignore */
+  }
+}
+
 // Admin middleware
 export async function requireAdmin(
   request: FastifyRequest,

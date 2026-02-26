@@ -115,6 +115,30 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/developer-tools/conversion-trainer/multiplayer',
+    name: 'ConversionTrainerMultiplayer',
+    component: () => import('@/pages/ConversionTrainerMultiplayerPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Conversion Trainer Multiplayer',
+        description: 'Play conversion trainer with friends. Real-time 1v1 or up to 32 players.',
+      },
+    },
+  },
+  {
+    path: '/developer-tools/conversion-trainer/multiplayer/:roomCode',
+    name: 'ConversionTrainerMultiplayerRoom',
+    component: () => import('@/pages/ConversionTrainerMultiplayerPage.vue'),
+    meta: {
+      transition: 'slide-up',
+      seo: {
+        title: 'Join Multiplayer Game',
+        description: 'Join a conversion trainer multiplayer game.',
+      },
+    },
+  },
+  {
     path: '/developer-tools/number-to-hex',
     name: 'NumberToHex',
     component: () => import('@/pages/NumberToHexPage.vue'),
