@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { gsap } from 'gsap'
-import { cn } from '@/utils/cn'
 import {
   ArrowLeftIcon,
   ClipboardDocumentIcon,
@@ -16,6 +14,7 @@ import { useAuth } from '@/composables/useAuth'
 import { api } from '@/api/client'
 import { createTournamentWebSocket } from '@/composables/useTournamentWebSocket'
 import { createTournamentControlWebSocket } from '@/composables/useTournamentControlWebSocket'
+import ConversionBoxInput from '@/components/ConversionBoxInput.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -54,151 +53,14 @@ const leaderboard = ref<Array<{ rank: number; displayName: string; score: number
 const answerFeedback = ref<'correct' | 'incorrect' | null>(null)
 const gameEndedData = ref<{ leaderboard: Array<{ rank: number; displayName: string; score: number; isGuest: boolean }>; reason?: string } | null>(null)
 
-const boxValues = ref<string[]>(Array(8).fill(''))
-const practiceInput = ref('')
-const boxRefs = ref<(HTMLInputElement | null)[]>(Array(8).fill(null))
-const boxContainerRef = ref<HTMLElement | null>(null)
-const practiceInputRef = ref<HTMLInputElement | null>(null)
-const boxShake = ref(false)
-
-const powerTable = [128, 64, 32, 16, 8, 4, 2, 1]
-const animEase = 'back.out(1.4)'
-const animEaseBounce = 'elastic.out(1, 0.5)'
+const conversionBoxRef = ref<InstanceType<typeof ConversionBoxInput> | null>(null)
 
 const tws = createTournamentWebSocket()
 const controlWs = createTournamentControlWebSocket()
 
 const conv = computed(() => (roomConfig.value?.conv as string) ?? 'binary-standalone')
 const mode = computed(() => (roomConfig.value?.mode as string) ?? 'classic')
-const boxCount = computed(() => {
-  if (mode.value === 'nibble-sprint') return 4
-  if (conv.value === 'ipv6-hextet') return 4
-  if (conv.value.includes('hex')) return 2
-  return 8
-})
-const useSegmentedBoxes = computed(() => conv.value !== 'ipv4-full')
 const showPowerTable = computed(() => (roomConfig.value?.goalValue as Record<string, unknown> | undefined)?.showPowerTable !== false)
-const powerOf2ForBoxes = computed(() => powerTable.slice(-boxCount.value))
-
-function setBoxRef(i: number, el: unknown) {
-  if (el && el instanceof HTMLInputElement) boxRefs.value[i] = el
-}
-
-function animateBoxTyped(index: number) {
-  const el = boxRefs.value[index]
-  if (!el) return
-  gsap.fromTo(el, { scale: 1.15 }, { scale: 1, duration: 0.25, ease: animEase })
-}
-
-function animateBoxFocused(index: number) {
-  const el = boxRefs.value[index]
-  if (!el) return
-  gsap.fromTo(el, { scale: 1.05 }, { scale: 1, duration: 0.2, ease: 'power2.out' })
-}
-
-function animateCorrect() {
-  const container = boxContainerRef.value
-  const input = practiceInputRef.value
-  const targets = useSegmentedBoxes.value && container
-    ? Array.from(container.querySelectorAll('input'))
-    : input ? [input] : []
-  if (targets.length === 0) return
-  gsap.fromTo(targets, { scale: 1 }, { scale: 1.08, duration: 0.15, ease: 'power2.out' })
-  gsap.to(targets, { scale: 1, duration: 0.35, ease: animEaseBounce, delay: 0.15 })
-  gsap.fromTo(targets, { boxShadow: '0 0 0 0 rgba(34, 197, 94, 0)' }, { boxShadow: '0 0 20px 4px rgba(34, 197, 94, 0.4)', duration: 0.2 })
-  gsap.to(targets, { boxShadow: '0 0 0 0 rgba(34, 197, 94, 0)', duration: 0.4, delay: 0.2 })
-}
-
-function animateIncorrect() {
-  const container = boxContainerRef.value
-  const input = practiceInputRef.value
-  const targets = useSegmentedBoxes.value && container
-    ? Array.from(container.querySelectorAll('input'))
-    : input ? [input] : []
-  if (targets.length === 0) return
-  gsap.fromTo(targets, { x: 0 }, { x: -10, duration: 0.05, ease: 'power2.in' })
-  gsap.to(targets, { x: 10, duration: 0.05, delay: 0.05 })
-  gsap.to(targets, { x: -8, duration: 0.05, delay: 0.1 })
-  gsap.to(targets, { x: 8, duration: 0.05, delay: 0.15 })
-  gsap.to(targets, { x: -5, duration: 0.05, delay: 0.2 })
-  gsap.to(targets, { x: 0, duration: 0.12, ease: 'power2.out', delay: 0.25 })
-  gsap.fromTo(targets, { boxShadow: '0 0 0 0 rgba(244, 63, 94, 0)' }, { boxShadow: '0 0 16px 2px rgba(244, 63, 94, 0.5)', duration: 0.1 })
-  gsap.to(targets, { boxShadow: '0 0 0 0 rgba(244, 63, 94, 0)', duration: 0.5, delay: 0.15 })
-}
-
-function handleBoxInput(index: number, raw: string) {
-  const isHex = conv.value.includes('hex') || conv.value === 'ipv6-hextet'
-  let valid = isHex
-    ? raw.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
-    : raw.replace(/[^01]/g, '')
-  if (!isHex && valid.length === 0 && raw.length === 1 && /[2-9]/.test(raw)) valid = raw === '2' ? '0' : '1'
-  if (valid.length === 0) {
-    if (raw.length === 0) boxValues.value[index] = ''
-    return
-  }
-  if (valid.length === 1) {
-    boxValues.value[index] = valid
-    animateBoxTyped(index)
-    if (index < boxCount.value - 1) nextTick(() => boxRefs.value[index + 1]?.focus())
-    return
-  }
-  const chars = valid.split('').slice(0, boxCount.value)
-  const arr = [...boxValues.value]
-  for (let i = 0; i < boxCount.value; i++) arr[i] = chars[i] ?? ''
-  boxValues.value = arr
-  nextTick(() => {
-    const lastIdx = Math.min(valid.length, boxCount.value) - 1
-    animateBoxTyped(lastIdx)
-    boxRefs.value[lastIdx]?.focus()
-  })
-}
-
-function handleBoxKeydown(index: number, e: KeyboardEvent) {
-  if (e.key === 'Backspace' && boxValues.value[index] === '') {
-    e.preventDefault()
-    if (index > 0) {
-      boxValues.value[index - 1] = ''
-      animateBoxFocused(index - 1)
-      nextTick(() => boxRefs.value[index - 1]?.focus())
-    }
-    return
-  }
-  if (e.key === 'ArrowLeft' && index > 0) {
-    e.preventDefault()
-    animateBoxFocused(index - 1)
-    nextTick(() => boxRefs.value[index - 1]?.focus())
-    return
-  }
-  if (e.key === 'ArrowRight' && index < boxCount.value - 1) {
-    e.preventDefault()
-    animateBoxFocused(index + 1)
-    nextTick(() => boxRefs.value[index + 1]?.focus())
-    return
-  }
-  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    e.preventDefault()
-    const isHex = conv.value.includes('hex') || conv.value === 'ipv6-hextet'
-    let valid = isHex
-      ? e.key.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
-      : e.key.replace(/[^01]/g, '')
-    if (!isHex && valid.length === 0 && /[2-9]/.test(e.key)) valid = e.key === '2' ? '0' : '1'
-    if (valid.length === 0) return
-    boxValues.value[index] = valid
-    animateBoxTyped(index)
-    if (index < boxCount.value - 1) nextTick(() => boxRefs.value[index + 1]?.focus())
-  }
-}
-
-function getAnswerString(): string {
-  return useSegmentedBoxes.value
-    ? boxValues.value.slice(0, boxCount.value).join('')
-    : practiceInput.value
-}
-
-function clearInput() {
-  boxValues.value = Array(8).fill('')
-  practiceInput.value = ''
-}
 
 function copyJoinLink() {
   const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/developer-tools/conversion-trainer/tournament/${tournamentId.value}`
@@ -346,8 +208,8 @@ function leaveTournament() {
   participantId.value = ''
 }
 
-function submitAnswer() {
-  const ans = getAnswerString()
+function submitAnswer(payload?: { answer: string }) {
+  const ans = payload?.answer ?? conversionBoxRef.value?.getAnswer() ?? ''
   if (!ans.trim()) return
   tws.send('answer_submit', { answer: ans })
 }
@@ -359,29 +221,19 @@ watch(roomStatus, (status) => {
 })
 
 watch(currentQuestion, (q) => {
-  if (q) clearInput()
+  if (q) conversionBoxRef.value?.clear()
 })
 
 watch(answerFeedback, (fb) => {
-  if (fb === 'correct') animateCorrect()
-  else if (fb === 'incorrect') {
-    animateIncorrect()
-    boxShake.value = true
-    setTimeout(() => { boxShake.value = false }, 500)
-    clearInput()
-    nextTick(() => {
-      if (useSegmentedBoxes.value) boxRefs.value[0]?.focus()
-      else practiceInputRef.value?.focus()
-    })
+  if (fb === 'incorrect') {
+    conversionBoxRef.value?.clear()
+    nextTick(() => conversionBoxRef.value?.focus())
   }
 })
 
 function resetCurrentQuestion() {
-  clearInput()
-  nextTick(() => {
-    if (useSegmentedBoxes.value) boxRefs.value[0]?.focus()
-    else practiceInputRef.value?.focus()
-  })
+  conversionBoxRef.value?.clear()
+  nextTick(() => conversionBoxRef.value?.focus())
 }
 
 function handlePlayingKeydown(e: KeyboardEvent) {
@@ -618,57 +470,16 @@ onBeforeUnmount(() => {
             <p class="text-5xl md:text-7xl font-mono font-light text-emerald-700 dark:text-emerald-300 mb-8">
               {{ currentQuestion.value }}
             </p>
-            <div class="flex gap-3 flex-wrap items-center">
-              <div v-if="useSegmentedBoxes" class="flex flex-col items-center gap-2">
-                <div ref="boxContainerRef" :class="cn('flex gap-1.5', boxShake && 'animate-shake')">
-                  <input
-                    v-for="(_, i) in boxCount"
-                    :key="i"
-                    :ref="(el) => setBoxRef(i, el)"
-                    :value="boxValues[i]"
-                    type="text"
-                    inputmode="numeric"
-                    maxlength="1"
-                    :class="cn(
-                      'box-input w-12 h-14 rounded-xl border-2 font-mono text-xl text-center',
-                      'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-600',
-                      'focus:outline-none focus:ring-2 focus:ring-mint',
-                      answerFeedback === 'incorrect' && 'border-coral ring-2 ring-coral/30',
-                      answerFeedback === 'correct' && 'border-emerald-400',
-                    )"
-                    @input="handleBoxInput(i, ($event.target as HTMLInputElement).value)"
-                    @keydown="handleBoxKeydown(i, $event)"
-                    @keydown.enter="submitAnswer"
-                  />
-                </div>
-                <div v-if="showPowerTable && conv.includes('binary')" class="flex gap-1.5">
-                  <div v-for="(val, i) in powerOf2ForBoxes" :key="i" class="w-12 text-center py-1 font-mono text-xs text-amber-700 dark:text-amber-300">
-                    {{ val }}
-                  </div>
-                </div>
-              </div>
-              <input
-                v-else
-                ref="practiceInputRef"
-                v-model="practiceInput"
-                type="text"
-                :placeholder="conv === 'ipv4-full' ? '11000000.10101000...' : conv === 'ipv6-hextet' ? '0ABC' : 'FF'"
-                :class="cn(
-                  'box-input flex-1 min-w-[280px] px-6 py-4 rounded-2xl border-2 font-mono text-xl',
-                  'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-600',
-                  'focus:outline-none focus:ring-2 focus:ring-mint',
-                  answerFeedback === 'incorrect' && 'border-coral',
-                  answerFeedback === 'correct' && 'border-emerald-400',
-                )"
-                @keydown.enter="submitAnswer"
-              />
-              <button
-                @click="submitAnswer"
-                class="px-8 py-4 rounded-2xl font-semibold bg-mint/60 text-emerald-800 dark:text-emerald-200 hover:bg-mint/80 transition-all"
-              >
-                Check
-              </button>
-            </div>
+            <ConversionBoxInput
+              ref="conversionBoxRef"
+              :conv="conv"
+              :mode="mode"
+              :show-power-table="showPowerTable"
+              :feedback="answerFeedback"
+              :shake="answerFeedback === 'incorrect'"
+              submit-label="Check"
+              @submit="(p) => submitAnswer(p)"
+            />
             <div v-if="answerFeedback" class="mt-4 flex items-center gap-2">
               <CheckIcon v-if="answerFeedback === 'correct'" class="w-6 h-6 text-emerald-500" />
               <XMarkIcon v-else class="w-6 h-6 text-coral" />
@@ -712,14 +523,3 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
-}
-.animate-shake { animation: shake 0.5s ease-in-out; }
-.box-input { transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
-</style>
