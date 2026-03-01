@@ -86,6 +86,20 @@ RUN printf 'server {\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
     }\n\
     \n\
+    # WebSocket: multiplayer and tournament (must have Upgrade/Connection for ws upgrade)\n\
+    location /ws/ {\n\
+        proxy_pass http://127.0.0.1:3001;\n\
+        proxy_http_version 1.1;\n\
+        proxy_set_header Upgrade $http_upgrade;\n\
+        proxy_set_header Connection "upgrade";\n\
+        proxy_set_header Host $host;\n\
+        proxy_set_header X-Real-IP $remote_addr;\n\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+        proxy_set_header X-Forwarded-Proto $scheme;\n\
+        proxy_read_timeout 86400;\n\
+        proxy_send_timeout 86400;\n\
+    }\n\
+    \n\
     # Serve game files directly from mounted volume (^~ prevents regex from overriding)\n\
     location ^~ /games/ {\n\
         alias /app/data/games/;\n\
