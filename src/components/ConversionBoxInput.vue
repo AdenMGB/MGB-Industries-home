@@ -225,8 +225,10 @@ function clear() {
 
 function focusInput() {
   nextTick(() => {
-    if (useSegmentedBoxes.value) boxRefs.value[0]?.focus()
-    else practiceInputRef.value?.focus()
+    nextTick(() => {
+      if (useSegmentedBoxes.value) boxRefs.value[0]?.focus()
+      else practiceInputRef.value?.focus()
+    })
   })
 }
 

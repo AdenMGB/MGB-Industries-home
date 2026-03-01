@@ -501,13 +501,7 @@ async function startGame() {
     startTimer(30)
   }
 
-  nextTick(() => {
-    if (useSegmentedBoxes.value) {
-      boxRefs.value[0]?.focus()
-    } else {
-      practiceInputRef.value?.focus()
-    }
-  })
+  nextTick(() => conversionBoxRef.value?.focus())
 }
 
 function endStreakChallenge() {

@@ -263,7 +263,10 @@ watch(roomStatus, (status) => {
 })
 
 watch(currentQuestion, (q) => {
-  if (q) conversionBoxRef.value?.clear()
+  if (q) {
+    conversionBoxRef.value?.clear()
+    nextTick(() => conversionBoxRef.value?.focus())
+  }
 })
 
 watch(chatMessages, () => {
