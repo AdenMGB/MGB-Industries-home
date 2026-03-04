@@ -17,6 +17,7 @@ export type GameMode =
   | 'survival'
   | 'streak-challenge'
   | 'nibble-sprint'
+  | 'octet-sprint'
 
 const props = withDefaults(
   defineProps<{
@@ -59,6 +60,7 @@ const practiceInputRef = ref<HTMLInputElement | null>(null)
 
 const boxCount = computed(() => {
   if (props.mode === 'nibble-sprint') return 4
+  if (props.mode === 'octet-sprint') return 4  // top 4 bits only; 8,4,2,1 assumed 0
   if (props.conv === 'ipv6-hextet') return 4
   if (props.conv.includes('hex')) return 2
   return 8
@@ -66,7 +68,9 @@ const boxCount = computed(() => {
 
 const useSegmentedBoxes = computed(() => props.conv !== 'ipv4-full')
 
-const powerOf2ForBoxes = computed(() => powerTable.slice(-boxCount.value))
+const powerOf2ForBoxes = computed(() =>
+  props.mode === 'octet-sprint' ? powerTable.slice(0, 4) : powerTable.slice(-boxCount.value)
+)
 
 const placeholder = computed(() => {
   if (props.conv === 'ipv4-full') return '11000000.10101000...'
@@ -212,9 +216,11 @@ function animateIncorrect() {
 }
 
 function getAnswer(): string {
-  return useSegmentedBoxes.value
-    ? boxValues.value.slice(0, boxCount.value).join('')
-    : practiceInput.value
+  if (!useSegmentedBoxes.value) return practiceInput.value
+  const bits = boxValues.value.slice(0, boxCount.value).join('')
+  // Octet sprint: user enters top 4 bits (128,64,32,16); lower 4 assumed 0
+  if (props.mode === 'octet-sprint') return bits + '0000'
+  return bits
 }
 
 function clear() {
@@ -298,7 +304,7 @@ defineExpose({
         </div>
       </div>
       <p v-if="overflowError" class="text-coral dark:text-rose-400 text-sm font-medium animate-pulse">
-        Whoa there! An octet only has 8 bits — no room for your extra digits! 🚫
+        {{ mode === 'octet-sprint' ? 'Only 4 bits (128, 64, 32, 16) — the rest are 0!' : 'Whoa there! An octet only has 8 bits — no room for your extra digits!' }} 🚫
       </p>
     </div>
     <input

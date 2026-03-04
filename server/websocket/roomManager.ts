@@ -378,7 +378,7 @@ export function validateAnswer(
   const q = room.questions[p.currentQuestionIndex]
   if (!q) return { correct: false, nextQuestion: null }
 
-  const bits = room.config.mode === 'nibble-sprint' ? 4 : 8
+  const bits = room.config.mode === 'nibble-sprint' ? 4 : 8 // octet-sprint uses 8 bits
   const normalized = normalizeAnswer(answer, room.config.conv, bits)
   const correct = normalized === q.answer.toLowerCase()
 

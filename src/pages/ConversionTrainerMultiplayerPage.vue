@@ -89,6 +89,7 @@ const gameModes = [
   { id: 'survival', label: 'Survival' },
   { id: 'streak-challenge', label: 'Streak Challenge' },
   { id: 'nibble-sprint', label: 'Nibble Sprint' },
+  { id: 'octet-sprint', label: 'Octet Sprint' },
 ]
 
 function copyRoomCode() {

@@ -42,9 +42,9 @@ const { isAuthenticated } = useAuth()
 
 type TabId = 'calculator' | 'table' | 'learn' | 'practice'
 const VALID_TABS = ['calculator', 'table', 'learn', 'practice'] as const
-const VALID_GAMES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint'] as const
+const VALID_GAMES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'] as const
 const VALID_CONV = ['binary-standalone', 'binary-octet', 'hex-standalone', 'hex-octet', 'ipv4-full', 'ipv6-hextet'] as const
-const VALID_LB_MODES = ['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'daily-streak'] as const
+const VALID_LB_MODES = ['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint', 'daily-streak'] as const
 
 function parseFromQuery<T>(q: Record<string, unknown>, key: string, valid: readonly T[]): T | null {
   const v = q[key]
@@ -64,7 +64,7 @@ type ConversionType =
   | 'ipv4-full'
   | 'ipv6-hextet'
 
-type GameType = 'classic' | 'speed-round' | 'survival' | 'streak-challenge' | 'nibble-sprint'
+type GameType = 'classic' | 'speed-round' | 'survival' | 'streak-challenge' | 'nibble-sprint' | 'octet-sprint'
 
 const tabs = [
   { id: 'calculator' as TabId, label: 'Calculator', icon: CalculatorIcon },
@@ -149,6 +149,7 @@ const progress = ref<{
   bestSpeedRound: number
   bestSurvival: number
   bestNibbleSprint: number
+  bestOctetSprint: number
 } | null>(null)
 const unlockedAchievements = ref<Set<string>>(new Set())
 const leaderboard = ref<Array<{ rank: number; userName: string; score: number; createdAt: string }>>([])
@@ -250,6 +251,7 @@ const gameTypes = [
   { id: 'survival' as GameType, label: 'Survival', desc: '3 lives, wrong = lose one', icon: HeartIcon },
   { id: 'streak-challenge' as GameType, label: 'Streak Challenge', desc: 'Beat your best streak', icon: AcademicCapIcon },
   { id: 'nibble-sprint' as GameType, label: 'Nibble Sprint', desc: '0–15 only, 30 seconds', icon: ClockIcon },
+  { id: 'octet-sprint' as GameType, label: 'Octet Sprint', desc: '128, 64, 32, 16 only (0–240), 30 seconds', icon: ClockIcon },
 ]
 
 const timedGameInstructions: Record<string, { description: string; bullets: string[] }> = {
@@ -277,6 +279,14 @@ const timedGameInstructions: Record<string, { description: string; bullets: stri
       'Fast nibble conversions',
     ],
   },
+  'octet-sprint': {
+    description: 'Quick conversions for values 0, 16, 32, … 240 (top 4 bits of byte) in 30 seconds.',
+    bullets: [
+      '30 seconds on the clock',
+      'Only 128, 64, 32, 16 bit values (0–240)',
+      'Common IP octet practice (192, 168, etc.)',
+    ],
+  },
 }
 
 function randomInt(min: number, max: number): number {
@@ -289,11 +299,12 @@ function generatePracticeQuestion(): void {
   conversionBoxRef.value?.clear()
 
   const isNibble = gameType.value === 'nibble-sprint'
+  const isOctetSprint = gameType.value === 'octet-sprint'
   const isIpv6Hextet = conversionType.value === 'ipv6-hextet'
-  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : 255
+  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : isOctetSprint ? 240 : 255
   const minVal = 0
 
-  if (conversionType.value === 'ipv4-full' && !isNibble) {
+  if (conversionType.value === 'ipv4-full' && !isNibble && !isOctetSprint) {
     const octets = [
       randomInt(1, 223),
       randomInt(0, 255),
@@ -308,7 +319,7 @@ function generatePracticeQuestion(): void {
     return
   }
 
-  const dec = randomInt(minVal, maxVal)
+  const dec = isOctetSprint ? randomInt(0, 15) * 16 : randomInt(minVal, maxVal)
   const decimalStr = dec.toString()
 
   if (conversionType.value === 'binary-standalone' || conversionType.value === 'binary-octet') {
@@ -376,13 +387,14 @@ function endTimedGame() {
     api.submitConversionScore(gameSessionId.value, mode, score, {
       correct: practiceCorrect.value,
       total: practiceTotal.value,
-      timeSeconds: mode === 'speed-round' ? 60 : 30,
+      timeSeconds: mode === 'speed-round' ? 60 : (mode === 'nibble-sprint' || mode === 'octet-sprint') ? 30 : 0,
     }, conversionType.value)
     api.updateConversionProgress({
       xpEarned: practiceCorrect.value * 10 + practiceStreak.value * 5,
       recordPlayed: true,
       ...(mode === 'speed-round' && { bestSpeedRound: Math.max(progress.value?.bestSpeedRound ?? 0, score) }),
       ...(mode === 'nibble-sprint' && { bestNibbleSprint: Math.max(progress.value?.bestNibbleSprint ?? 0, score) }),
+      ...(mode === 'octet-sprint' && { bestOctetSprint: Math.max(progress.value?.bestOctetSprint ?? 0, score) }),
     })
     checkAchievements()
   }
@@ -395,6 +407,7 @@ function checkAchievements() {
   if (gameType.value === 'speed-round' && practiceCorrect.value >= 20 && !unlockedAchievements.value.has('speed_demon')) toUnlock.push('speed_demon')
   if (gameType.value === 'survival' && practiceCorrect.value >= 50 && !unlockedAchievements.value.has('survivor')) toUnlock.push('survivor')
   if (gameType.value === 'nibble-sprint' && practiceCorrect.value >= 15 && !unlockedAchievements.value.has('nibble_master')) toUnlock.push('nibble_master')
+  if (gameType.value === 'octet-sprint' && practiceCorrect.value >= 15 && !unlockedAchievements.value.has('octet_master')) toUnlock.push('octet_master')
   if (practiceTotal.value >= 10 && practiceCorrect.value === practiceTotal.value && !unlockedAchievements.value.has('perfect_10')) toUnlock.push('perfect_10')
   for (const id of toUnlock) {
     api.unlockConversionAchievement(id)
@@ -434,7 +447,7 @@ function checkPracticeAnswer(inputStr?: string): void {
     }
     checkAchievements()
 
-    if (gameType.value === 'speed-round' || gameType.value === 'nibble-sprint') {
+    if (gameType.value === 'speed-round' || gameType.value === 'nibble-sprint' || gameType.value === 'octet-sprint') {
       setTimeout(() => {
         if (!gameOver.value) nextQuestion()
       }, 300)
@@ -489,7 +502,7 @@ async function startGame() {
   if (isAuthenticated.value) {
     api.updateConversionProgress({ recordPlayed: true })
     // Get session for score submission (anti-cheat)
-    if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint'].includes(gameType.value)) {
+    if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'].includes(gameType.value)) {
       const res = await api.startConversionSession(gameType.value, conversionType.value)
       if (res.data) gameSessionId.value = res.data.sessionId
     }
@@ -497,7 +510,7 @@ async function startGame() {
 
   if (gameType.value === 'speed-round') {
     startTimer(60)
-  } else if (gameType.value === 'nibble-sprint') {
+  } else if (gameType.value === 'nibble-sprint' || gameType.value === 'octet-sprint') {
     startTimer(30)
   }
 
@@ -532,7 +545,7 @@ async function loadLeaderboard() {
   leaderboardLoading.value = true
   const conv = leaderboardMode.value === 'daily-streak'
     ? undefined
-    : leaderboardMode.value === 'nibble-sprint'
+    : (leaderboardMode.value === 'nibble-sprint' || leaderboardMode.value === 'octet-sprint')
       ? 'binary-standalone'
       : leaderboardConv.value
   const res = await api.getConversionLeaderboard(leaderboardMode.value, 20, conv)
@@ -599,11 +612,11 @@ watch(gameType, (newType, oldType) => {
   if (oldType === 'streak-challenge' && bestStreakThisSession.value > 0) {
     endStreakChallenge()
   }
-  if (newType === 'nibble-sprint') {
+  if (newType === 'nibble-sprint' || newType === 'octet-sprint') {
     conversionType.value = 'binary-standalone'
   }
   // Sync leaderboard mode to game mode when switching
-  if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint'].includes(newType)) {
+  if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'].includes(newType)) {
     leaderboardMode.value = newType
     leaderboardConv.value = conversionType.value
     loadLeaderboard()
@@ -616,7 +629,7 @@ watch(leaderboardConv, () => {
 
 // Sync leaderboard conv when conversion type changes (like gamemode does)
 watch(conversionType, (newConv) => {
-  if (leaderboardMode.value !== 'daily-streak' && leaderboardMode.value !== 'nibble-sprint') {
+  if (leaderboardMode.value !== 'daily-streak' && leaderboardMode.value !== 'nibble-sprint' && leaderboardMode.value !== 'octet-sprint') {
     leaderboardConv.value = newConv
     loadLeaderboard()
   }
@@ -664,7 +677,7 @@ watch([() => activeTab.value, () => gameType.value, gameStarted, gameOver], ([ta
     gameKeyHandler = null
   }
   const inGame = tab === 'practice' && (started || over)
-  const onStartScreen = tab === 'practice' && ['speed-round', 'nibble-sprint', 'survival'].includes(gt) && !started
+  const onStartScreen = tab === 'practice' && ['speed-round', 'nibble-sprint', 'octet-sprint', 'survival'].includes(gt) && !started
   if (inGame || onStartScreen) {
     gameKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && (over || onStartScreen)) {
@@ -981,7 +994,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <div v-if="gameType !== 'nibble-sprint'">
+          <div v-if="gameType !== 'nibble-sprint' && gameType !== 'octet-sprint'">
             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wide">Conversion</label>
             <div class="flex flex-col gap-1.5">
               <button
@@ -1016,7 +1029,7 @@ onMounted(() => {
         <main class="flex-1 flex flex-col min-w-0 p-6 md:p-10 bg-mint/20 dark:bg-mint/5">
           <!-- Timed game start screen: Speed Round, Survival, Nibble Sprint -->
           <div
-            v-if="['speed-round', 'nibble-sprint', 'survival'].includes(gameType) && !gameStarted"
+            v-if="['speed-round', 'nibble-sprint', 'octet-sprint', 'survival'].includes(gameType) && !gameStarted"
             class="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full"
           >
             <div
@@ -1045,7 +1058,7 @@ onMounted(() => {
                 @click="startGame"
                 class="px-12 py-4 rounded-2xl font-semibold text-lg bg-mint/50 text-emerald-800 dark:text-emerald-200 hover:bg-mint/70 ring-2 ring-mint/50 transition-all duration-200 hover:scale-105 active:scale-95"
               >
-                Start {{ gameType === 'speed-round' ? '60s' : gameType === 'nibble-sprint' ? '30s' : '' }} Round
+                Start {{ gameType === 'speed-round' ? '60s' : (gameType === 'nibble-sprint' || gameType === 'octet-sprint') ? '30s' : '' }} Round
               </button>
               <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Press Enter to start</p>
             </div>
@@ -1061,7 +1074,7 @@ onMounted(() => {
                 · {{ practiceCorrect }}/{{ practiceTotal }}
               </span>
               <div class="flex items-center gap-4">
-                <span v-if="(gameType === 'speed-round' || gameType === 'nibble-sprint') && gameStarted" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-coral/20 text-coral dark:text-rose-300 font-mono text-xl">
+                <span v-if="(gameType === 'speed-round' || gameType === 'nibble-sprint' || gameType === 'octet-sprint') && gameStarted" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-coral/20 text-coral dark:text-rose-300 font-mono text-xl">
                   <ClockIcon class="w-6 h-6" />
                   {{ timerSeconds }}s
                 </span>
@@ -1102,7 +1115,7 @@ onMounted(() => {
                 :show-power-table="showPowerTable"
                 :feedback="practiceFeedback"
                 :show-next-button="!!practiceFeedback"
-                :show-reveal-button="!practiceFeedback && !['speed-round','nibble-sprint','survival'].includes(gameType)"
+                :show-reveal-button="!practiceFeedback && !['speed-round','nibble-sprint','octet-sprint','survival'].includes(gameType)"
                 @submit="(p) => practiceFeedback ? nextQuestion() : checkPracticeAnswer(p.answer)"
                 @reveal="revealAnswer"
               />
@@ -1201,9 +1214,10 @@ onMounted(() => {
                 <option value="survival">Survival</option>
                 <option value="streak-challenge">Streak</option>
                 <option value="nibble-sprint">Nibble</option>
+                <option value="octet-sprint">Octet</option>
                 <option value="daily-streak">Daily Streak</option>
               </select>
-              <select v-if="leaderboardMode !== 'daily-streak' && leaderboardMode !== 'nibble-sprint'" v-model="leaderboardConv" @change="loadLeaderboard" class="text-xs px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 min-w-0 flex-1 shrink">
+              <select v-if="leaderboardMode !== 'daily-streak' && leaderboardMode !== 'nibble-sprint' && leaderboardMode !== 'octet-sprint'" v-model="leaderboardConv" @change="loadLeaderboard" class="text-xs px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 min-w-0 flex-1 shrink">
                 <option v-for="ct in conversionTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
               </select>
             </div>
@@ -1305,9 +1319,10 @@ onMounted(() => {
                     <option value="survival">Survival</option>
                     <option value="streak-challenge">Streak Challenge</option>
                     <option value="nibble-sprint">Nibble Sprint</option>
+                    <option value="octet-sprint">Octet Sprint</option>
                     <option value="daily-streak">Daily Streak</option>
                   </select>
-                  <select v-if="leaderboardMode !== 'daily-streak' && leaderboardMode !== 'nibble-sprint'" v-model="leaderboardConv" @change="loadLeaderboard" class="w-full text-sm px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">
+                  <select v-if="leaderboardMode !== 'daily-streak' && leaderboardMode !== 'nibble-sprint' && leaderboardMode !== 'octet-sprint'" v-model="leaderboardConv" @change="loadLeaderboard" class="w-full text-sm px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">
                     <option v-for="ct in conversionTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
                   </select>
                 </div>

@@ -12,7 +12,7 @@ import {
 } from '../websocket/tournamentManager.js'
 import { runTournamentBracketSync } from '../websocket/tournamentSyncRunner.js'
 
-const VALID_MODES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint'] as const
+const VALID_MODES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'] as const
 const VALID_CONV = ['binary-standalone', 'binary-octet', 'hex-standalone', 'hex-octet', 'ipv4-full', 'ipv6-hextet'] as const
 const VALID_GOAL_TYPES = ['first_to', 'most_in_time', 'survival', 'streak', 'timed'] as const
 

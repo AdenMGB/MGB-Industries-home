@@ -248,6 +248,7 @@ export const api = {
       bestSpeedRound: number
       bestSurvival: number
       bestNibbleSprint: number
+      bestOctetSprint: number
     }>('/conversion-trainer/progress')
   },
 
@@ -259,6 +260,7 @@ export const api = {
     bestSpeedRound?: number
     bestSurvival?: number
     bestNibbleSprint?: number
+    bestOctetSprint?: number
   }) {
     return request<{
       totalXp: number
@@ -269,6 +271,7 @@ export const api = {
       bestSpeedRound: number
       bestSurvival: number
       bestNibbleSprint: number
+      bestOctetSprint: number
     }>('/conversion-trainer/progress', {
       method: 'POST',
       body: JSON.stringify(data),

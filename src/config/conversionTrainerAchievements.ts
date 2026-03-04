@@ -13,5 +13,6 @@ export const CONVERSION_TRAINER_ACHIEVEMENTS: Record<
   speed_demon: { name: 'Speed Demon', description: '20+ in Speed Round', icon: 'bolt' },
   survivor: { name: 'Survivor', description: '50+ in Survival', icon: 'heart' },
   nibble_master: { name: 'Nibble Master', description: '15+ in Nibble Sprint', icon: 'clock' },
+  octet_master: { name: 'Octet Master', description: '15+ in Octet Sprint', icon: 'clock' },
   perfect_10: { name: 'Perfect 10', description: '10/10 in any session', icon: 'star' },
 }

@@ -650,6 +650,7 @@ function copyToClipboard(text: string) {
               <option value="survival">Survival</option>
               <option value="streak-challenge">Streak Challenge</option>
               <option value="nibble-sprint">Nibble Sprint</option>
+              <option value="octet-sprint">Octet Sprint</option>
             </select>
           </div>
           <div>
@@ -721,6 +722,7 @@ function copyToClipboard(text: string) {
             <option value="survival">Survival</option>
             <option value="streak-challenge">Streak Challenge</option>
             <option value="nibble-sprint">Nibble Sprint</option>
+            <option value="octet-sprint">Octet Sprint</option>
           </select>
           <select
             v-model="conversionScoresFilter.conv"

@@ -5,7 +5,7 @@ import {
   decimalToIpv6Hextet,
 } from '../utils/numberConversion.js'
 
-const VALID_MODES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint'] as const
+const VALID_MODES = ['classic', 'speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'] as const
 const VALID_CONV = ['binary-standalone', 'binary-octet', 'hex-standalone', 'hex-octet', 'ipv4-full', 'ipv6-hextet'] as const
 
 export type GameMode = (typeof VALID_MODES)[number]
@@ -28,11 +28,12 @@ export function generateQuestion(
   mode: GameMode
 ): Question {
   const isNibble = mode === 'nibble-sprint'
+  const isOctetSprint = mode === 'octet-sprint'
   const isIpv6Hextet = conv === 'ipv6-hextet'
-  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : 255
+  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : isOctetSprint ? 240 : 255
   const minVal = 0
 
-  if (conv === 'ipv4-full' && !isNibble) {
+  if (conv === 'ipv4-full' && !isNibble && !isOctetSprint) {
     const octets = [
       randomInt(1, 223),
       randomInt(0, 255),
@@ -47,7 +48,8 @@ export function generateQuestion(
     return { value: '192.168.1.1', answer: ipv4ToBinary('192.168.1.1')! }
   }
 
-  const dec = randomInt(minVal, maxVal)
+  // Octet sprint: only values 0, 16, 32, ..., 240 (top 4 bits of byte)
+  const dec = isOctetSprint ? randomInt(0, 15) * 16 : randomInt(minVal, maxVal)
   const decimalStr = dec.toString()
 
   if (conv === 'binary-standalone' || conv === 'binary-octet') {
@@ -93,11 +95,12 @@ export function generateQuestionWithRandom(
     Math.floor(random() * (max - min + 1)) + min
 
   const isNibble = mode === 'nibble-sprint'
+  const isOctetSprint = mode === 'octet-sprint'
   const isIpv6Hextet = conv === 'ipv6-hextet'
-  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : 255
+  const maxVal = isIpv6Hextet ? 65535 : isNibble ? 15 : isOctetSprint ? 240 : 255
   const minVal = 0
 
-  if (conv === 'ipv4-full' && !isNibble) {
+  if (conv === 'ipv4-full' && !isNibble && !isOctetSprint) {
     const octets = [
       randomInt(1, 223),
       randomInt(0, 255),
@@ -110,7 +113,7 @@ export function generateQuestionWithRandom(
     return { value: '192.168.1.1', answer: ipv4ToBinary('192.168.1.1')! }
   }
 
-  const dec = randomInt(minVal, maxVal)
+  const dec = isOctetSprint ? randomInt(0, 15) * 16 : randomInt(minVal, maxVal)
   const decimalStr = dec.toString()
 
   if (conv === 'binary-standalone' || conv === 'binary-octet') {

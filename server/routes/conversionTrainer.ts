@@ -4,13 +4,14 @@ import { z } from 'zod'
 import { authenticate, requireAdmin } from '../plugins/auth.js'
 import { getDatabase } from '../plugins/database.js'
 
-const VALID_MODES = ['speed-round', 'survival', 'streak-challenge', 'nibble-sprint'] as const
+const VALID_MODES = ['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'] as const
 const VALID_CONV = ['binary-standalone', 'binary-octet', 'hex-standalone', 'hex-octet', 'ipv4-full', 'ipv6-hextet'] as const
 
 // Reasonable max scores (anti-cheat caps) - survival and streak-challenge have no caps
 const SCORE_CAPS: Record<string, number> = {
   'speed-round': 200,   // ~3.3/sec for 60s
   'nibble-sprint': 150, // ~5/sec for 30s
+  'octet-sprint': 150,  // ~5/sec for 30s
 }
 
 const startSessionSchema = z.object({
@@ -38,6 +39,7 @@ const updateProgressSchema = z.object({
   bestSpeedRound: z.number().int().min(0).optional(),
   bestSurvival: z.number().int().min(0).optional(),
   bestNibbleSprint: z.number().int().min(0).optional(),
+  bestOctetSprint: z.number().int().min(0).optional(),
   recordPlayed: z.boolean().optional(),
 })
 
@@ -67,6 +69,10 @@ function validateScoreSubmission(
     }
     if (mode === 'nibble-sprint' && metadata.timeSeconds != null) {
       if (metadata.timeSeconds < 25 || metadata.timeSeconds > 35) return 'Invalid time for nibble-sprint'
+      if (metadata.correct != null && metadata.correct !== score) return 'Score must match correct count'
+    }
+    if (mode === 'octet-sprint' && metadata.timeSeconds != null) {
+      if (metadata.timeSeconds < 25 || metadata.timeSeconds > 35) return 'Invalid time for octet-sprint'
       if (metadata.correct != null && metadata.correct !== score) return 'Score must match correct count'
     }
     if (mode === 'streak-challenge' && metadata.streak != null && metadata.streak !== score) {
@@ -329,6 +335,7 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
           bestSpeedRound: 0,
           bestSurvival: 0,
           bestNibbleSprint: 0,
+          bestOctetSprint: 0,
         })
       }
 
@@ -341,6 +348,7 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
         bestSpeedRound: (row.best_speed_round as number) ?? 0,
         bestSurvival: (row.best_survival as number) ?? 0,
         bestNibbleSprint: (row.best_nibble_sprint as number) ?? 0,
+        bestOctetSprint: (row.best_octet_sprint as number) ?? 0,
       })
     } catch (error) {
       fastify.log.error(error)
@@ -364,6 +372,7 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
       const bestSpeedRound = Math.max((existing?.best_speed_round as number) ?? 0, body.bestSpeedRound ?? 0)
       const bestSurvival = Math.max((existing?.best_survival as number) ?? 0, body.bestSurvival ?? 0)
       const bestNibbleSprint = Math.max((existing?.best_nibble_sprint as number) ?? 0, body.bestNibbleSprint ?? 0)
+      const bestOctetSprint = Math.max((existing?.best_octet_sprint as number) ?? 0, body.bestOctetSprint ?? 0)
 
       let dailyStreak = (existing?.daily_streak as number) ?? 0
       const lastPlayed = (existing?.last_played_date as string) ?? null
@@ -387,8 +396,8 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
       const level = xpToLevel(totalXp)
       const lastPlayedDate = body.recordPlayed ? today : (lastPlayed ?? null)
       db.prepare(`
-        INSERT INTO conversion_trainer_progress (user_id, total_xp, level, best_streak, best_classic_streak, best_speed_round, best_survival, best_nibble_sprint, daily_streak, last_played_date, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO conversion_trainer_progress (user_id, total_xp, level, best_streak, best_classic_streak, best_speed_round, best_survival, best_nibble_sprint, best_octet_sprint, daily_streak, last_played_date, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(user_id) DO UPDATE SET
           total_xp = excluded.total_xp,
           level = excluded.level,
@@ -397,10 +406,11 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
           best_speed_round = excluded.best_speed_round,
           best_survival = excluded.best_survival,
           best_nibble_sprint = excluded.best_nibble_sprint,
+          best_octet_sprint = excluded.best_octet_sprint,
           daily_streak = excluded.daily_streak,
           last_played_date = excluded.last_played_date,
           updated_at = datetime('now')
-      `).run(user.userId, totalXp, level, bestStreak, bestClassicStreak, bestSpeedRound, bestSurvival, bestNibbleSprint, dailyStreak, lastPlayedDate)
+      `).run(user.userId, totalXp, level, bestStreak, bestClassicStreak, bestSpeedRound, bestSurvival, bestNibbleSprint, bestOctetSprint, dailyStreak, lastPlayedDate)
 
       return reply.send({
         totalXp,
@@ -411,6 +421,7 @@ export async function conversionTrainerRoutes(fastify: FastifyInstance) {
         bestSpeedRound,
         bestSurvival,
         bestNibbleSprint,
+        bestOctetSprint,
       })
     } catch (error) {
       if (error instanceof z.ZodError) {

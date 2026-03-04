@@ -412,7 +412,7 @@ export function validateBracketAnswer(
   const q = bracket.questions[p.currentQuestionIndex]
   if (!q) return { correct: false, nextQuestion: null }
 
-  const bits = bracket.config.mode === 'nibble-sprint' ? 4 : 8
+  const bits = bracket.config.mode === 'nibble-sprint' ? 4 : 8 // octet-sprint uses 8 bits
   const normalized = normalizeAnswer(answer, bracket.config.conv, bits)
   const correct = normalized === q.answer.toLowerCase()
 
