@@ -1,18 +1,9 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { gsap } from 'gsap'
-import { CodeBracketIcon, RocketLaunchIcon, HeartIcon } from '@heroicons/vue/24/solid'
-import { cn } from '@/utils/cn'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-
-const techIcons = [
-  { icon: CodeBracketIcon, label: 'Rust', color: 'bg-orange-300' },
-  { icon: CodeBracketIcon, label: 'TypeScript', color: 'bg-blue-300' },
-  { icon: RocketLaunchIcon, label: 'Vue.js', color: 'bg-green-300' },
-  { icon: HeartIcon, label: 'SvelteKit', color: 'bg-red-300' },
-]
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
@@ -70,9 +61,8 @@ onMounted(() => {
     },
   )
 
-  // Advanced tech icons with scale + rotation + stagger
-  // Same animation for CTA buttons
-  const allAnimatedElements = document.querySelectorAll('.tech-icon, .cta-button')
+  // Animate CTA buttons (and anything else we keep with `.cta-button`)
+  const allAnimatedElements = document.querySelectorAll('.cta-button')
   gsap.fromTo(
     allAnimatedElements,
     {
@@ -92,18 +82,6 @@ onMounted(() => {
       delay: 0.5,
     },
   )
-
-  // Continuous subtle float animation for tech icons
-  techIcons.forEach((_, index) => {
-    gsap.to(`.tech-icon:nth-child(${index + 1})`, {
-      y: -8,
-      duration: 2 + index * 0.3,
-      repeat: -1,
-      yoyo: true,
-      ease: 'sine.inOut',
-      delay: 1 + index * 0.2,
-    })
-  })
 })
 </script>
 
@@ -132,40 +110,14 @@ onMounted(() => {
           >
             Open Source Developer
           </h2>
-          <p class="hero-description text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-xl">
-            Creative Technologist • Building beautiful, performant applications
-          </p>
         </div>
 
-        <!-- Right side - Tech stack in unique layout (spans 5 cols) -->
-        <div class="md:col-span-5 space-y-4">
-          <!-- Equal-sized 2x2 grid for tech icons -->
-          <div class="grid grid-cols-2 gap-3">
-            <div v-for="(tech, index) in techIcons" :key="index" class="tech-icon">
-              <div
-                :class="
-                  cn(
-                    'px-5 py-3 rounded-xl',
-                    'bg-white/50 dark:bg-gray-800/80 backdrop-blur-md',
-                    'border border-gray-200/40 dark:border-gray-600/50',
-                    'text-gray-700 dark:text-gray-200 font-normal text-sm',
-                    'flex items-center gap-2',
-                    'hover:bg-white/70 dark:hover:bg-gray-700/80 transition-all duration-300',
-                    'shadow-sm hover:shadow-md',
-                  )
-                "
-              >
-                <component :is="tech.icon" class="w-4 h-4" />
-                <span>{{ tech.label }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- CTA buttons in vertical stack with same animation -->
-          <div class="flex flex-col gap-3 pt-4">
+        <!-- Right side CTA buttons (spans 5 cols) -->
+        <div class="md:col-span-5">
+          <div class="flex flex-col gap-2 pt-1">
             <button
               @click="router.push('/projects')"
-              class="cta-button px-6 py-3 rounded-lg font-normal text-white transition-all duration-300 hover:opacity-90 bg-peach shadow-md hover:shadow-lg"
+              class="cta-button w-full md:w-auto px-5 py-2.5 rounded-lg font-normal text-white transition-all duration-300 hover:opacity-90 bg-peach shadow-md hover:shadow-lg"
             >
               View My Work
             </button>
@@ -173,7 +125,7 @@ onMounted(() => {
               href="https://github.com/AdenMGB"
               target="_blank"
               rel="noopener noreferrer"
-              class="cta-button px-6 py-3 rounded-lg font-normal text-white transition-all duration-300 hover:opacity-90 bg-lavender shadow-md hover:shadow-lg text-center"
+              class="cta-button w-full md:w-auto px-5 py-2.5 rounded-lg font-normal text-white transition-all duration-300 hover:opacity-90 bg-lavender shadow-md hover:shadow-lg text-center"
             >
               GitHub
             </a>
@@ -200,7 +152,6 @@ onMounted(() => {
 }
 
 /* Hide elements initially to prevent flash before GSAP animation */
-.tech-icon,
 .cta-button {
   opacity: 0;
   transform: translateY(20px) scale(0.8) rotate(-5deg);

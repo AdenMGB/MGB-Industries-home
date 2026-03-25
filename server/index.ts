@@ -8,8 +8,6 @@ import { authPlugin } from './plugins/auth.js'
 import { websocketPlugin } from './plugins/websocket.js'
 import { authRoutes } from './routes/auth.js'
 import { userRoutes } from './routes/users.js'
-import { gameSaveRoutes } from './routes/gameSaves.js'
-import { gameListRoutes } from './routes/games.js'
 import { conversionTrainerRoutes } from './routes/conversionTrainer.js'
 import { multiplayerConversionRoutes } from './routes/multiplayerConversion.js'
 import { tournamentConversionRoutes } from './routes/tournamentConversion.js'
@@ -37,21 +35,9 @@ export async function createServer() {
   await fastify.register(authPlugin)
   await fastify.register(websocketPlugin)
 
-  // Serve game files from data/games at /games/
-  const gamesRoot = process.env.GAMES_BASE || join(process.cwd(), 'data', 'games')
-  if (existsSync(gamesRoot)) {
-    await fastify.register(fastifyStatic, {
-      root: gamesRoot,
-      prefix: '/games/',
-      decorateReply: false,
-    })
-  }
-
   // Register routes (they will check for database availability themselves)
   await fastify.register(authRoutes)
   await fastify.register(userRoutes)
-  await fastify.register(gameSaveRoutes)
-  await fastify.register(gameListRoutes)
   await fastify.register(conversionTrainerRoutes)
   await fastify.register(multiplayerConversionRoutes)
   await fastify.register(tournamentConversionRoutes)

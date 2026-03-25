@@ -31,6 +31,10 @@ const favoritedGameIds = ref<Set<string>>(new Set())
 const { isAuthenticated } = useAuth()
 const { success, error: showError } = useToast()
 
+// Temporarily disable the Games feature UI/loader.
+// Keep the page for future dev, but show a static "Coming soon" placeholder.
+const gamesComingSoon = true
+
 const getGameId = (name: string) =>
   name.toLowerCase().replace(/\s/g, '-').replace(/[^a-z0-9-]/g, '')
 
@@ -360,6 +364,7 @@ const getHistoryGameDisplay = (historyItem: { game_name: string; game_href: stri
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 onMounted(async () => {
+  if (gamesComingSoon) return
   await nextTick()
 
   // Load offline games from API
@@ -471,7 +476,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen py-24 px-4 md:px-8">
+  <div v-if="gamesComingSoon" class="min-h-screen py-24 px-4 md:px-8">
+    <div class="max-w-4xl mx-auto text-center">
+      <h1 class="text-5xl md:text-7xl font-light mb-6 tracking-tight text-gray-800 dark:text-white">
+        Games
+      </h1>
+      <p class="text-base md:text-lg text-gray-600 dark:text-gray-400">
+        Games Coming soon
+      </p>
+    </div>
+  </div>
+
+  <div v-else class="min-h-screen py-24 px-4 md:px-8">
     <div class="max-w-7xl mx-auto">
       <!-- Header (Admin-style typography) -->
       <div class="page-header mb-12">

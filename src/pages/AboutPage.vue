@@ -3,7 +3,7 @@ import { onMounted } from 'vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { cn } from '@/utils/cn'
-import { MapPinIcon, CodeBracketIcon, RocketLaunchIcon } from '@heroicons/vue/24/solid'
+import { MapPinIcon } from '@heroicons/vue/24/solid'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
@@ -122,16 +122,12 @@ onMounted(() => {
             <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-white">Hey, I'm Aden</h2>
             <div class="space-y-3 text-base text-gray-600 dark:text-gray-300 leading-relaxed">
               <p>
-                Developer from Adelaide, Australia. Building stuff with Vue, SvelteKit, and Rust.
-                Sometimes it works, sometimes it doesn't. That's the fun part.
+                Developer from Adelaide, Australia. Building stuff with modern tools. Sometimes it
+                works, sometimes it doesn't. That's the fun part.
               </p>
               <p>
                 I make desktop apps, contribute to open source, and occasionally remember to commit
                 my code. Currently hyperfixated on making things fast and not breaking production.
-              </p>
-              <p class="text-sm text-gray-500 dark:text-gray-400 italic">
-                Fun fact: I once spent 3 hours debugging only to realize I forgot to save the file.
-                We've all been there.
               </p>
             </div>
           </div>
@@ -154,40 +150,6 @@ onMounted(() => {
                     </div>
                     <div class="text-lg font-semibold text-gray-800 dark:text-white">
                       Adelaide, Australia
-                    </div>
-                  </div>
-                </div>
-                <div class="flex items-start gap-4 group cursor-default">
-                  <div
-                    class="p-3 rounded-xl bg-lavender/10 dark:bg-lavender/20 group-hover:bg-lavender/20 dark:group-hover:bg-lavender/30 transition-all duration-300 group-hover:scale-105"
-                  >
-                    <CodeBracketIcon class="w-5 h-5 text-lavender" />
-                  </div>
-                  <div class="flex-1">
-                    <div
-                      class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5"
-                    >
-                      Role
-                    </div>
-                    <div class="text-lg font-semibold text-gray-800 dark:text-white">
-                      Full Stack Developer
-                    </div>
-                  </div>
-                </div>
-                <div class="flex items-start gap-4 group cursor-default">
-                  <div
-                    class="p-3 rounded-xl bg-mint/10 dark:bg-mint/20 group-hover:bg-mint/20 dark:group-hover:bg-mint/30 transition-all duration-300 group-hover:scale-105"
-                  >
-                    <RocketLaunchIcon class="w-5 h-5 text-mint" />
-                  </div>
-                  <div class="flex-1">
-                    <div
-                      class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5"
-                    >
-                      Status
-                    </div>
-                    <div class="text-lg font-semibold text-gray-800 dark:text-white">
-                      Open Source Contributor
                     </div>
                   </div>
                 </div>

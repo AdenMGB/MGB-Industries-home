@@ -56,6 +56,9 @@ const isFavorite = ref(false)
 const isTogglingFavorite = ref(false)
 let cleanupSync: (() => void) | null = null
 
+// Temporarily disable the entire Games feature (keep page/route for future dev).
+const gamesComingSoon = true
+
 // For authenticated: defer game load until cloud save is fetched and injected
 const gameIframeSrc = ref<string | null>(null)
 const iframeSrcdoc = ref<string | undefined>(undefined)
@@ -79,7 +82,7 @@ const toggleFavorite = async () => {
       isFavorite.value = true
       success('Added to favorites')
     }
-  } catch (error) {
+  } catch {
     showError('Failed to update favorites')
   } finally {
     isTogglingFavorite.value = false
@@ -101,26 +104,35 @@ const goBack = async () => {
 const toggleFullscreen = async () => {
   if (!gameContainerRef.value) return
 
+  type FullscreenContainer = HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void>
+    msRequestFullscreen?: () => Promise<void>
+  }
+  type FullscreenDocument = Document & {
+    webkitExitFullscreen?: () => Promise<void>
+    msExitFullscreen?: () => Promise<void>
+  }
+
   try {
     if (!isFullscreen.value) {
       // Enter fullscreen
       if (gameContainerRef.value.requestFullscreen) {
         await gameContainerRef.value.requestFullscreen()
-      } else if ((gameContainerRef.value as any).webkitRequestFullscreen) {
+      } else if ((gameContainerRef.value as FullscreenContainer).webkitRequestFullscreen) {
         // Safari
-        await (gameContainerRef.value as any).webkitRequestFullscreen()
-      } else if ((gameContainerRef.value as any).msRequestFullscreen) {
+        await (gameContainerRef.value as FullscreenContainer).webkitRequestFullscreen?.()
+      } else if ((gameContainerRef.value as FullscreenContainer).msRequestFullscreen) {
         // IE/Edge
-        await (gameContainerRef.value as any).msRequestFullscreen()
+        await (gameContainerRef.value as FullscreenContainer).msRequestFullscreen?.()
       }
     } else {
       // Exit fullscreen
       if (document.exitFullscreen) {
         await document.exitFullscreen()
-      } else if ((document as any).webkitExitFullscreen) {
-        await (document as any).webkitExitFullscreen()
-      } else if ((document as any).msExitFullscreen) {
-        await (document as any).msExitFullscreen()
+      } else if ((document as FullscreenDocument).webkitExitFullscreen) {
+        await (document as FullscreenDocument).webkitExitFullscreen?.()
+      } else if ((document as FullscreenDocument).msExitFullscreen) {
+        await (document as FullscreenDocument).msExitFullscreen?.()
       }
     }
   } catch (error) {
@@ -146,8 +158,8 @@ watch(isAuthenticated, async (val) => {
 const handleFullscreenChange = () => {
   isFullscreen.value = !!(
     document.fullscreenElement ||
-    (document as any).webkitFullscreenElement ||
-    (document as any).msFullscreenElement
+    (document as unknown as { webkitFullscreenElement?: Element; msFullscreenElement?: Element }).webkitFullscreenElement ||
+    (document as unknown as { webkitFullscreenElement?: Element; msFullscreenElement?: Element }).msFullscreenElement
   )
 }
 
@@ -164,6 +176,12 @@ onMounted(async () => {
     { opacity: 0, scale: 0.95 },
     { opacity: 1, scale: 1, duration: 0.4, ease: 'cubic-bezier(0.4, 0, 0.2, 1)' }
   )
+
+  // Games feature disabled: show placeholder and skip all game iframe + API logic.
+  if (gamesComingSoon) {
+    isLoading.value = false
+    return
+  }
 
   // Record game visit and check favorite status if authenticated
   if (isAuthenticated.value) {
@@ -310,9 +328,18 @@ onUnmounted(() => {
           )"
           :style="isFullscreen ? 'height: 100vh; width: 100vw;' : 'height: calc(100vh - 200px); min-height: 600px;'"
         >
+          <div
+            v-if="gamesComingSoon"
+            class="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm z-10 text-center px-6"
+          >
+            <div>
+              <p class="text-xl font-semibold text-gray-800">Games Coming soon</p>
+            </div>
+          </div>
+
           <!-- Favorite button (logged in only) -->
           <button
-            v-if="isAuthenticated && !isFullscreen"
+            v-if="isAuthenticated && !isFullscreen && !gamesComingSoon"
             @click="toggleFavorite"
             :disabled="isTogglingFavorite"
             :aria-label="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
@@ -358,7 +385,7 @@ onUnmounted(() => {
 
           <!-- Loading indicator -->
           <div
-            v-if="isLoading"
+            v-if="isLoading && !gamesComingSoon"
             class="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm z-10"
           >
             <div class="text-center">
@@ -368,6 +395,7 @@ onUnmounted(() => {
           </div>
 
           <iframe
+            v-if="!gamesComingSoon"
             ref="iframeRef"
             :src="effectiveGameSrc"
             :srcdoc="iframeSrcdoc"
@@ -380,7 +408,7 @@ onUnmounted(() => {
 
       <!-- Save status indicator -->
       <div
-        v-if="isAuthenticated && !isFullscreen"
+        v-if="isAuthenticated && !isFullscreen && !gamesComingSoon"
         class="mt-4 text-center"
       >
         <p class="text-xs text-gray-500">
