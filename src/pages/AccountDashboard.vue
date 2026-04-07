@@ -58,8 +58,7 @@ const gameFavorites = ref<
 >([])
 const gamesWithSaves = ref(0)
 
-// Temporarily disable the Games feature. Conversion Trainer achievements remain available.
-const gamesFeatureEnabled = false
+const gamesFeatureEnabled = true
 
 // Conversion Trainer achievements
 const conversionAchievements = ref<Set<string>>(new Set())

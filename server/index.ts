@@ -16,6 +16,8 @@ import { seoRoutes } from './routes/seo.js'
 import { gitRoutes } from './routes/git.js'
 import { ogImageRoutes } from './routes/og-image.js'
 import { metaRoutes } from './routes/meta.js'
+import { gameSaveRoutes } from './routes/gameSaves.js'
+import { gameListRoutes } from './routes/games.js'
 
 export async function createServer() {
   const fastify = Fastify({
@@ -46,6 +48,8 @@ export async function createServer() {
   await fastify.register(gitRoutes)
   await fastify.register(ogImageRoutes)
   await fastify.register(metaRoutes)
+  await fastify.register(gameSaveRoutes)
+  await fastify.register(gameListRoutes)
 
   return fastify
 }

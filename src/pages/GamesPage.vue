@@ -4,276 +4,53 @@ import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { cn } from '@/utils/cn'
-import { MagnifyingGlassIcon, ClockIcon, StarIcon, CubeIcon, Squares2X2Icon } from '@heroicons/vue/24/outline'
+import {
+  MagnifyingGlassIcon,
+  ClockIcon,
+  StarIcon,
+  CubeIcon,
+  Squares2X2Icon,
+  SparklesIcon,
+} from '@heroicons/vue/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid'
 import { useAuth } from '@/composables/useAuth'
 import { api } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import { ARCADE_GAMES, type ArcadeGame } from '@/config/arcadeGames'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
 }
 
-interface Game {
-  name: string
-  href: string
-  section: string
-  type?: string
-  isOfflinePack?: boolean
-}
-
 const searchQuery = ref('')
 const selectedSection = ref<string | null>(null)
-const offlineGames = ref<Array<{ name: string; href: string }>>([])
 const gameHistory = ref<Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }>>([])
 const gameFavorites = ref<Array<{ game_id: string; game_name: string; game_href: string; created_at: string }>>([])
 const favoritedGameIds = ref<Set<string>>(new Set())
 const { isAuthenticated } = useAuth()
 const { success, error: showError } = useToast()
 
-// Temporarily disable the Games feature UI/loader.
-// Keep the page for future dev, but show a static "Coming soon" placeholder.
-const gamesComingSoon = true
+const router = useRouter()
+const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
-const getGameId = (name: string) =>
-  name.toLowerCase().replace(/\s/g, '-').replace(/[^a-z0-9-]/g, '')
+const getGameHref = (id: string) => `in-house:${id}`
 
-// Generate abbreviation for game name
-const getGameAbbreviation = (name: string): string => {
-  const words = name.trim().split(/\s+/).filter(w => w.length > 0)
-  
-  if (words.length === 0) {
-    return name.charAt(0).toUpperCase()
-  }
-  
-  // If first word is short (4 chars or less), use it (including numbers)
-  const firstWord = words[0]
-  if (firstWord && firstWord.length <= 4) {
-    return firstWord.toUpperCase()
-  }
-  
-  // If two words: use first letter of each
-  if (words.length === 2) {
-    return words.map(w => {
-      // Extract first letter or number
-      const firstChar = w.match(/[a-zA-Z0-9]/)?.[0] || w.charAt(0)
-      return firstChar.toUpperCase()
-    }).join('')
-  }
-  
-  // If three or more words: use first letter of first 2-3 words
-  if (words.length >= 3) {
-    return words.slice(0, 3).map(w => {
-      const firstChar = w.match(/[a-zA-Z0-9]/)?.[0] || w.charAt(0)
-      return firstChar.toUpperCase()
-    }).join('')
-  }
-  
-  // Single word: use first 2-3 letters if short, otherwise first 2 letters
-  if (words.length === 1 && firstWord) {
-    if (firstWord.length <= 4) {
-      return firstWord.toUpperCase()
-    }
-    // For longer words, take first 2 characters (prefer letters)
-    const letters = firstWord.match(/[a-zA-Z0-9]{1,2}/)?.[0] || firstWord.substring(0, 2)
-    return letters.toUpperCase()
-  }
-  
-  // Fallback: first character
-  return name.charAt(0).toUpperCase()
-}
+const games = computed(() =>
+  ARCADE_GAMES.map((g) => ({
+    name: g.name,
+    href: getGameHref(g.id),
+    section: g.section,
+    id: g.id,
+    color: g.color,
+    textColor: g.textColor,
+    emoji: g.emoji,
+    description: g.description,
+    tags: g.tags,
+    controls: g.controls,
+  })),
+)
 
-// Pastel color palette
-const pastelColors = [
-  { bg: '#FFB5A7', text: '#8B4513' }, // peach
-  { bg: '#C8A8E9', text: '#4A148C' }, // lavender
-  { bg: '#A8E6CF', text: '#004D40' }, // mint
-  { bg: '#FFD3A5', text: '#E65100' }, // soft-yellow
-  { bg: '#FFB6C1', text: '#880E4F' }, // warm-pink
-  { bg: '#B5E5E8', text: '#01579B' }, // soft-blue
-  { bg: '#FFE4B5', text: '#BF360C' }, // moccasin
-  { bg: '#DDA0DD', text: '#4A148C' }, // plum
-  { bg: '#98D8C8', text: '#004D40' }, // turquoise
-  { bg: '#F0E68C', text: '#827717' }, // khaki
-  { bg: '#FFB3BA', text: '#880E4F' }, // pink
-  { bg: '#BAE1FF', text: '#01579B' }, // sky blue
-]
-
-// Generate consistent hash for game name
-const getGameHash = (name: string): number => {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return Math.abs(hash)
-}
-
-// Generate consistent pastel background color based on game name
-const getGameColor = (name: string): string => {
-  const hash = getGameHash(name)
-  const index = hash % pastelColors.length
-  const color = pastelColors[index]
-  if (!color) {
-    return '#FFB5A7' // fallback to peach
-  }
-  return color.bg
-}
-
-// Generate consistent text color based on game name
-const getGameTextColor = (name: string): string => {
-  const hash = getGameHash(name)
-  const index = hash % pastelColors.length
-  const color = pastelColors[index]
-  if (!color) {
-    return '#8B4513' // fallback to brown
-  }
-  return color.text
-}
-
-// Thumbnail image URL from Gams-main/img (served at /games/Gams-main/img/)
-const getGameImageUrl = (name: string): string => {
-  const imageName = name.toLowerCase().replace(/\s/g, '') + '.png'
-  return `/games/Gams-main/img/${imageName}`
-}
-
-// Track which game images failed to load (fallback to abbreviation)
-const imageLoadFailed = ref<Record<string, boolean>>({})
-const setImageFailed = (name: string) => {
-  imageLoadFailed.value = { ...imageLoadFailed.value, [name]: true }
-}
-
-// Extract games list from Gams.html structure
-const gamesData = [
-  { title: 'Basic', type: 'section' },
-  { name: 'Stickman Hook' },
-  { name: 'Drive Mad', href: 'Gams-main/g/g/drivemad/drivemad.html' },
-  { name: '2048' },
-  { name: 'Cookie Clicker', href: 'Gams-main/g/g/cookie/index.html' },
-  { name: 'Cube Field', href: 'Gams-main/g/g/cubefield/index.html' },
-  { name: 'Spacebar Clicker' },
-  { name: 'Offline Paradise' },
-  { name: 'Sand Game' },
-  { name: 'Agario Lite' },
-  { name: 'Evil Glitch' },
-  { name: 'Its Raining Boxes' },
-  { name: 'T Rex' },
-  { name: 'Stack' },
-  { name: 'Rolling Forests' },
-  { name: 'Radius Raid' },
-  { name: 'Mountain Maze' },
-  { name: 'Fluid Simulator' },
-  { name: 'Edge Not Found' },
-  { name: 'Ninja vs EVILCORP' },
-  { name: 'Geometry Dash' },
-  { name: 'Wordle' },
-  { name: 'Paper IO 2' },
-
-  { title: 'Unity', type: 'section' },
-  { name: 'Slope' },
-  { name: 'Burrito Bison', href: 'Gams-main/g/g/burritobison/burritobison.html' },
-  { name: 'Tube Jumpers' },
-  { name: 'Hole IO' },
-  { name: 'Madalin Stunt Cars', href: 'Gams-main/g/g/madalinstuntcars/madalinstuntcars.html' },
-  { name: 'Glass City', href: 'Gams-main/g/g/glasscity/glasscity.html' },
-  { name: 'Tunnel Rush', href: 'Gams-main/g/g/tunnelrush/tunnelrush.html' },
-  { name: 'Tanuki Sunset', href: 'Gams-main/g/g/tanukisunset/tanukisunset.html' },
-  { name: 'A Dance of Fire and Ice', href: 'Gams-main/g/g/fireice/index.html' },
-  { name: 'Game Inside a Game', href: 'Gams-main/g/g/gameinsideagame/index.html' },
-  { name: 'Cell Machine', href: 'Gams-main/g/g/cellmachine/index.html' },
-  { name: 'Slope 2', href: 'Gams-main/g/g/slope2/index.html' },
-  { name: 'Ai Creatures', href: 'Gams-main/g/g/aicreatures/index.html' },
-  { name: 'Grey Box Testing', href: 'Gams-main/g/g/greybox/index.html' },
-
-  { title: 'Retrogaming', type: 'section' },
-  { name: 'Super Mario 64' },
-  { name: 'Celeste' },
-  { name: 'Just One Boss' },
-  { name: 'Super Mario RPG' },
-
-  { title: 'Henry Stickmin Flash', type: 'section' },
-  { name: 'Breaking The Bank' },
-  { name: 'Escaping The Prison' },
-  { name: 'Stealing The Diamond' },
-  { name: 'Infiltrating The Airship' },
-  { name: 'Fleeing The Complex' },
-
-  { title: 'Flash', type: 'section' },
-  { name: 'Bloxorz' },
-  { name: 'Tetris' },
-  { name: 'Flood Runner 4' },
-  { name: 'Raft Wars' },
-  { name: 'Raft Wars 2' },
-  { name: 'Worlds Hardest Game' },
-  { name: 'The Impossible Quiz' },
-  { name: 'Learn To Fly Idle' },
-  { name: 'Learn To Fly 1' },
-  { name: 'Learn To Fly 2' },
-  { name: 'Learn To Fly 3' },
-  { name: 'Bloons Tower Defense 1' },
-  { name: 'Bloons Tower Defense 2' },
-  { name: 'Bloons Tower Defense 5' },
-  { name: 'Cat Ninja' },
-  { name: 'Pacman' },
-  { name: '1 on 1 Soccer' },
-  { name: 'QWOP' },
-  { name: 'Use Boxmen' },
-  { name: '40x Escape' },
-  { name: 'Stickman Life' },
-  { name: 'Duck Life 1' },
-  { name: 'Duck Life 2' },
-  { name: 'Duck Life 3' },
-  { name: 'Duck Life 4' },
-  { name: 'Duck Life 5' },
-
-  { title: 'Tools', type: 'section' },
-  { name: 'Ruffle Flash Player', href: 'Gams-main/g/g/Ruffle/Ruffle.html' },
-  { name: 'Code Editor', type: 'raw' },
-  { name: 'Web Retro' },
-
-  { title: 'Offline Pack', type: 'section' },
-  // Offline Pack games are loaded dynamically from /api/games/offline-list
-]
-
-// Process games data into structured format
-const games = computed<Game[]>(() => {
-  const result: Game[] = []
-  let currentSection = ''
-
-  // Process static games data
-  gamesData.forEach((item) => {
-    if (item.type === 'section' && item.title) {
-      currentSection = item.title
-    } else if (item.name) {
-      const imgName = item.name.toLowerCase().replace(/\s/g, '')
-      const href = item.href || `Gams-main/g/${imgName}.html`
-
-      result.push({
-        name: item.name,
-        href,
-        section: currentSection,
-        type: item.type,
-      })
-    }
-  })
-
-  // Add dynamically loaded offline games
-  if (offlineGames.value.length > 0) {
-    offlineGames.value.forEach((game) => {
-      result.push({
-        name: game.name,
-        href: game.href,
-        section: 'Offline Pack',
-        isOfflinePack: true,
-      })
-    })
-  }
-
-  return result
-})
-
-const sections = computed(() => {
-  return Array.from(new Set(games.value.map((g) => g.section)))
-})
+const sections = computed(() => Array.from(new Set(games.value.map((g) => g.section))))
 
 const gameStats = computed(() => ({
   total: games.value.length,
@@ -283,60 +60,58 @@ const gameStats = computed(() => ({
 
 const filteredGames = computed(() => {
   let filtered = games.value
-
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
+    const q = searchQuery.value.toLowerCase()
     filtered = filtered.filter(
       (g) =>
-        g.name.toLowerCase().includes(query) ||
-        g.section.toLowerCase().includes(query),
+        g.name.toLowerCase().includes(q) ||
+        g.section.toLowerCase().includes(q) ||
+        g.description.toLowerCase().includes(q) ||
+        g.tags.some((t) => t.toLowerCase().includes(q)),
     )
   }
-
   if (selectedSection.value) {
     filtered = filtered.filter((g) => g.section === selectedSection.value)
   }
-
   return filtered
 })
 
-const router = useRouter()
-
-const openGame = (game: Game) => {
-  const gameId = game.name.toLowerCase().replace(/\s/g, '-').replace(/[^a-z0-9-]/g, '')
+const openGame = (game: { id: string; name: string; href: string }) => {
   router.push({
     name: 'Game',
-    params: { id: gameId },
+    params: { id: game.id },
     query: { href: game.href },
   })
 }
 
-const openGameFromHistory = (historyItem: { game_id: string; game_href: string }) => {
+const openGameFromHistory = (item: { game_id: string; game_href: string }) => {
   router.push({
     name: 'Game',
-    params: { id: historyItem.game_id },
-    query: { href: historyItem.game_href },
+    params: { id: item.game_id },
+    query: { href: item.game_href },
   })
 }
 
-const toggleFavorite = async (e: Event, game: Game) => {
+const toggleFavorite = async (e: Event, game: { id: string; name: string; href: string }) => {
   e.stopPropagation()
   if (!isAuthenticated.value) return
-  const gameId = getGameId(game.name)
-  const isFav = favoritedGameIds.value.has(gameId)
+  const isFav = favoritedGameIds.value.has(game.id)
   try {
     if (isFav) {
-      await api.removeGameFavorite(gameId)
-      favoritedGameIds.value = new Set([...favoritedGameIds.value].filter((id) => id !== gameId))
-      gameFavorites.value = gameFavorites.value.filter((f) => f.game_id !== gameId)
+      await api.removeGameFavorite(game.id)
+      favoritedGameIds.value = new Set([...favoritedGameIds.value].filter((id) => id !== game.id))
+      gameFavorites.value = gameFavorites.value.filter((f) => f.game_id !== game.id)
       success('Removed from favorites')
     } else {
-      await api.addGameFavorite(gameId, game.name, game.href)
-      favoritedGameIds.value = new Set([...favoritedGameIds.value, gameId])
-      gameFavorites.value = [{ game_id: gameId, game_name: game.name, game_href: game.href, created_at: new Date().toISOString() }, ...gameFavorites.value]
+      await api.addGameFavorite(game.id, game.name, game.href)
+      favoritedGameIds.value = new Set([...favoritedGameIds.value, game.id])
+      gameFavorites.value = [
+        { game_id: game.id, game_name: game.name, game_href: game.href, created_at: new Date().toISOString() },
+        ...gameFavorites.value,
+      ]
       success('Added to favorites')
     }
-  } catch (error) {
+  } catch {
     showError('Failed to update favorites')
   }
 }
@@ -349,36 +124,10 @@ const openGameFromFavorite = (fav: { game_id: string; game_href: string }) => {
   })
 }
 
-// Find game in gamesData by name or href
-const findGameInDataSet = (gameName: string, gameHref: string): Game | null => {
-  return games.value.find(
-    (g) => g.name.toLowerCase() === gameName.toLowerCase() || g.href === gameHref
-  ) || null
-}
-
-// Always use abbreviation for game display
-const getHistoryGameDisplay = (historyItem: { game_name: string; game_href: string }) => {
-  return { type: 'abbreviation' as const, name: historyItem.game_name }
-}
-
-const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
+const getArcadeByGameId = (id: string): ArcadeGame | undefined =>
+  ARCADE_GAMES.find((g) => g.id === id)
 
 onMounted(async () => {
-  if (gamesComingSoon) return
-  await nextTick()
-
-  // Load offline games from API
-  try {
-    const response = await fetch('/api/games/offline-list')
-    if (response.ok) {
-      const data = await response.json()
-      offlineGames.value = data.games || []
-    }
-  } catch (error) {
-    console.error('Failed to load offline games:', error)
-  }
-
-  // Load game history and favorites if authenticated
   if (isAuthenticated.value) {
     try {
       const [historyRes, favoritesRes] = await Promise.all([
@@ -392,70 +141,26 @@ onMounted(async () => {
         gameFavorites.value = favoritesRes.data.favorites || []
         favoritedGameIds.value = new Set(favoritesRes.data.favorites.map((f) => f.game_id))
       }
-    } catch (error) {
-      console.error('Failed to load game data:', error)
+    } catch {
+      /* silently skip */
     }
   }
 
-  // Set initial states to prevent flash
+  await nextTick()
+
   gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
   gsap.set('.stat-card', { opacity: 0, y: 20, scale: 0.98 })
   gsap.set('.search-container', { opacity: 0, x: -30, scale: 0.95 })
   gsap.set('.filter-tag', { opacity: 0, scale: 0.8, x: 20 })
   gsap.set('[data-game-card]', { opacity: 0, y: 40, scale: 0.95 })
 
-  // Create a timeline - all top elements animate together
   const tl = gsap.timeline({ defaults: { ease: premiumEase } })
 
-  // All three animate simultaneously at the same time
-  tl.to(
-    '.page-header',
-    {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      duration: 0.6,
-    },
-    0,
-  )
+  tl.to('.page-header', { opacity: 1, y: 0, scale: 1, duration: 0.6 }, 0)
+  tl.to('.stat-card', { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.1, delay: 0.1 }, 0)
+  tl.to('.search-container', { opacity: 1, x: 0, scale: 1, duration: 0.5 }, 0)
+  tl.to('.filter-tag', { opacity: 1, scale: 1, x: 0, duration: 0.4, stagger: 0.04 }, 0)
 
-  tl.to(
-    '.stat-card',
-    {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      duration: 0.5,
-      stagger: 0.1,
-      delay: 0.1,
-    },
-    0,
-  )
-
-  tl.to(
-    '.search-container',
-    {
-      opacity: 1,
-      x: 0,
-      scale: 1,
-      duration: 0.5,
-    },
-    0,
-  )
-
-  tl.to(
-    '.filter-tag',
-    {
-      opacity: 1,
-      scale: 1,
-      x: 0,
-      duration: 0.4,
-      stagger: 0.04,
-    },
-    0,
-  )
-
-  // Simple card animation on scroll
   await nextTick()
   ScrollTrigger.refresh()
 
@@ -476,39 +181,29 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="gamesComingSoon" class="min-h-screen py-24 px-4 md:px-8">
-    <div class="max-w-4xl mx-auto text-center">
-      <h1 class="text-5xl md:text-7xl font-light mb-6 tracking-tight text-gray-800 dark:text-white">
-        Games
-      </h1>
-      <p class="text-base md:text-lg text-gray-600 dark:text-gray-400">
-        Games Coming soon
-      </p>
-    </div>
-  </div>
-
-  <div v-else class="min-h-screen py-24 px-4 md:px-8">
+  <div class="min-h-screen py-24 px-4 md:px-8">
     <div class="max-w-7xl mx-auto">
-      <!-- Header (Admin-style typography) -->
+      <!-- Header -->
       <div class="page-header mb-12">
-        <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
-          Games
-        </h1>
+        <div class="flex items-center gap-3 mb-4">
+          <SparklesIcon class="w-8 h-8 text-peach dark:text-peach" />
+          <h1 class="text-5xl md:text-7xl font-light tracking-tight text-gray-800 dark:text-white">
+            Games
+          </h1>
+        </div>
         <p class="text-base text-gray-600 dark:text-gray-400">
-          A collection of classic and modern browser games. Click any game to play!
+          10 original arcade games built in-house — play instantly in your browser.
         </p>
       </div>
 
-      <!-- Stats Cards (Admin-style pastel) -->
+      <!-- Stats Cards -->
       <div
         :class="cn(
           'grid grid-cols-1 gap-6 mb-12',
           isAuthenticated ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
         )"
       >
-        <div
-          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-peach/10 backdrop-blur-md border border-gray-200/50 dark:border-peach/20"
-        >
+        <div class="stat-card p-6 rounded-xl bg-white/40 dark:bg-peach/10 backdrop-blur-md border border-gray-200/50 dark:border-peach/20">
           <div class="flex items-center gap-4">
             <div class="p-3 rounded-lg bg-peach/20 dark:bg-peach/30">
               <CubeIcon class="w-8 h-8 text-gray-700 dark:text-peach" />
@@ -519,9 +214,8 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <div
-          class="stat-card p-6 rounded-xl bg-white/40 dark:bg-lavender/10 backdrop-blur-md border border-gray-200/50 dark:border-lavender/20"
-        >
+
+        <div class="stat-card p-6 rounded-xl bg-white/40 dark:bg-lavender/10 backdrop-blur-md border border-gray-200/50 dark:border-lavender/20">
           <div class="flex items-center gap-4">
             <div class="p-3 rounded-lg bg-lavender/20 dark:bg-lavender/30">
               <Squares2X2Icon class="w-8 h-8 text-gray-700 dark:text-lavender" />
@@ -532,6 +226,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+
         <div
           v-if="isAuthenticated"
           class="stat-card p-6 rounded-xl bg-white/40 dark:bg-mint/10 backdrop-blur-md border border-gray-200/50 dark:border-mint/20"
@@ -548,51 +243,41 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Search and filters side by side -->
+      <!-- Search + filters -->
       <div class="mb-16 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-        <!-- Search bar -->
         <div class="search-container md:flex-1 md:min-w-[300px] md:max-w-md">
           <div
-            :class="
-              cn(
+            :class="cn(
               'relative w-full',
               'bg-white/40 dark:bg-gray-800/60 backdrop-blur-md rounded-xl',
               'border border-gray-200/50 dark:border-gray-600/50',
               'transition-all duration-300 hover:bg-white/50 dark:hover:bg-gray-700/60',
-              )
-            "
+            )"
           >
-            <MagnifyingGlassIcon
-              class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-            />
+            <MagnifyingGlassIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Search games..."
-              :class="
-                cn(
-              'w-full pl-12 pr-4 py-3 bg-transparent',
-              'text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500',
-                  'focus:outline-none rounded-xl',
-                )
-              "
+              :class="cn(
+                'w-full pl-12 pr-4 py-3 bg-transparent',
+                'text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500',
+                'focus:outline-none rounded-xl',
+              )"
             />
           </div>
         </div>
 
-        <!-- Filter Tags next to search -->
         <div class="flex flex-wrap items-center gap-2">
           <button
             @click="selectedSection = null"
             class="filter-tag"
-            :class="
-              cn(
-                'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
-                selectedSection === null
-                  ? 'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white scale-105'
-                  : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
-              )
-            "
+            :class="cn(
+              'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
+              selectedSection === null
+                ? 'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white scale-105'
+                : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
+            )"
           >
             All
           </button>
@@ -601,202 +286,156 @@ onMounted(async () => {
             :key="section"
             @click="selectedSection = selectedSection === section ? null : section"
             class="filter-tag"
-            :class="
-              cn(
-                'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
-                selectedSection === section
-                  ? 'bg-lavender/30 dark:bg-lavender/30 text-gray-800 dark:text-white scale-105'
-                  : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
-              )
-            "
+            :class="cn(
+              'px-4 py-1.5 rounded-lg text-sm font-normal transition-all duration-300',
+              selectedSection === section
+                ? 'bg-lavender/30 dark:bg-lavender/30 text-gray-800 dark:text-white scale-105'
+                : 'bg-white/40 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-600/60 hover:scale-105',
+            )"
           >
             {{ section }}
           </button>
         </div>
       </div>
 
-      <!-- Favorites Section (if signed in) -->
-      <div v-if="isAuthenticated && gameFavorites.length > 0" class="mb-8">
+      <!-- Favorites Strip -->
+      <div v-if="isAuthenticated && gameFavorites.length > 0" class="mb-10">
         <div class="flex items-center gap-2 mb-3">
           <StarIconSolid class="w-4 h-4 text-amber-500" />
           <h2 class="text-base font-medium text-gray-700 dark:text-gray-300">Favorites</h2>
         </div>
-        <div class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2">
+        <div class="flex flex-wrap gap-3">
           <button
             v-for="item in gameFavorites"
             :key="item.game_id"
             @click="openGameFromFavorite(item)"
             :class="cn(
-              'group relative overflow-hidden rounded-lg',
+              'group flex items-center gap-2 px-3 py-2 rounded-xl',
               'bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50',
-              'hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all duration-300',
+              'hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all duration-200',
               'hover:scale-105 active:scale-95',
-              'shadow-sm hover:shadow-md',
             )"
           >
-            <div
-              class="aspect-square relative overflow-hidden rounded-t-lg flex items-center justify-center"
-              :style="{ backgroundColor: getGameColor(item.game_name) }"
-            >
-              <img
-                v-show="!imageLoadFailed[item.game_name]"
-                :src="getGameImageUrl(item.game_name)"
-                alt=""
-                class="absolute inset-0 w-full h-full object-cover"
-                @error="setImageFailed(item.game_name)"
-              />
-              <span
-                v-show="imageLoadFailed[item.game_name]"
-                class="text-lg font-semibold transition-transform duration-300 group-hover:scale-110 relative z-10"
-                :style="{ color: getGameTextColor(item.game_name) }"
-              >
-                {{ getGameAbbreviation(item.game_name) }}
-              </span>
-            </div>
-            <div class="p-1.5">
-              <h3 class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
-                {{ item.game_name }}
-              </h3>
-            </div>
+            <span class="text-lg" :aria-hidden="true">
+              {{ getArcadeByGameId(item.game_id)?.emoji ?? '🎮' }}
+            </span>
+            <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ item.game_name }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Game History Section (if signed in) -->
-      <div v-if="isAuthenticated && gameHistory.length > 0" class="mb-8">
+      <!-- History Strip -->
+      <div v-if="isAuthenticated && gameHistory.length > 0" class="mb-10">
         <div class="flex items-center gap-2 mb-3">
           <ClockIcon class="w-4 h-4 text-gray-600 dark:text-gray-400" />
           <h2 class="text-base font-medium text-gray-700 dark:text-gray-300">Recently Played</h2>
         </div>
-        <div class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2">
+        <div class="flex flex-wrap gap-3">
           <button
             v-for="item in gameHistory"
             :key="item.game_id"
             @click="openGameFromHistory(item)"
             :class="cn(
-              'group relative overflow-hidden rounded-lg',
-              'bg-white/40 backdrop-blur-md border border-gray-200/50',
-              'hover:bg-white/60 transition-all duration-300',
+              'group flex items-center gap-2 px-3 py-2 rounded-xl',
+              'bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50',
+              'hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all duration-200',
               'hover:scale-105 active:scale-95',
-              'shadow-sm hover:shadow-md',
             )"
           >
-            <!-- Thumbnail from Gams-main/img, fallback to abbreviation -->
-            <div
-              class="aspect-square relative overflow-hidden rounded-t-lg flex items-center justify-center"
-              :style="{ backgroundColor: getGameColor(item.game_name) }"
-            >
-              <img
-                v-show="!imageLoadFailed[item.game_name]"
-                :src="getGameImageUrl(item.game_name)"
-                alt=""
-                class="absolute inset-0 w-full h-full object-cover"
-                @error="setImageFailed(item.game_name)"
-              />
-              <span
-                v-show="imageLoadFailed[item.game_name]"
-                class="text-lg font-semibold transition-transform duration-300 group-hover:scale-110 relative z-10"
-                :style="{ color: getGameTextColor(item.game_name) }"
-              >
-                {{ getGameAbbreviation(item.game_name) }}
-              </span>
-            </div>
-            <!-- Game name -->
-            <div class="p-1.5">
-              <h3 class="text-xs font-medium text-gray-800 truncate">
-                {{ item.game_name }}
-              </h3>
-            </div>
+            <span class="text-lg">{{ getArcadeByGameId(item.game_id)?.emoji ?? '🎮' }}</span>
+            <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ item.game_name }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Games grid -->
+      <!-- Games Grid -->
       <div
         v-if="filteredGames.length > 0"
         class="games-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"
       >
         <div
-          v-for="(game, index) in filteredGames"
-          :key="index"
+          v-for="game in filteredGames"
+          :key="game.id"
           data-game-card
           @click="openGame(game)"
-          :class="
-            cn(
-              'group cursor-pointer transform-gpu',
-              'bg-white/40 dark:bg-gray-800/80 backdrop-blur-md rounded-xl',
-              'border border-gray-200/50 dark:border-gray-700/50',
-              'hover:bg-white/60 dark:hover:bg-gray-700/80 transition-all duration-300',
-              'hover:scale-105 active:scale-95',
-            )
-          "
+          :class="cn(
+            'group cursor-pointer transform-gpu',
+            'bg-white/40 dark:bg-gray-800/80 backdrop-blur-md rounded-xl',
+            'border border-gray-200/50 dark:border-gray-700/50',
+            'hover:bg-white/60 dark:hover:bg-gray-700/80 transition-all duration-300',
+            'hover:scale-105 active:scale-95',
+            'hover:shadow-lg hover:-translate-y-0.5',
+          )"
         >
-          <!-- Thumbnail from Gams-main/img, fallback to abbreviation -->
+          <!-- Thumbnail -->
           <div
             class="aspect-square relative overflow-hidden rounded-t-xl flex items-center justify-center"
-            :style="{ backgroundColor: getGameColor(game.name) }"
+            :style="{ backgroundColor: game.color }"
           >
-            <img
-              v-show="!imageLoadFailed[game.name]"
-              :src="getGameImageUrl(game.name)"
-              alt=""
-              class="absolute inset-0 w-full h-full object-cover"
-              @error="setImageFailed(game.name)"
+            <!-- Animated shimmer on hover -->
+            <div
+              class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              :style="{
+                background: `radial-gradient(circle at 50% 50%, ${game.color}80 0%, transparent 70%)`,
+              }"
             />
+            <!-- Big emoji icon -->
             <span
-              v-show="imageLoadFailed[game.name]"
-              class="text-3xl md:text-4xl font-semibold transition-transform duration-300 group-hover:scale-110 relative z-10"
-              :style="{ color: getGameTextColor(game.name) }"
+              class="text-4xl md:text-5xl select-none transition-transform duration-300 group-hover:scale-110 relative z-10"
+              :aria-hidden="true"
             >
-              {{ getGameAbbreviation(game.name) }}
+              {{ game.emoji }}
             </span>
-            <!-- Favorite button (logged in only) -->
+            <!-- Favorite button -->
             <button
               v-if="isAuthenticated"
               @click="toggleFavorite($event, game)"
-              :aria-label="favoritedGameIds.has(getGameId(game.name)) ? 'Remove from favorites' : 'Add to favorites'"
+              :aria-label="favoritedGameIds.has(game.id) ? 'Remove from favorites' : 'Add to favorites'"
               :class="cn(
                 'absolute top-2 right-2 z-20 p-1.5 rounded-lg',
                 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm',
-                'transition-all duration-300 hover:scale-110 active:scale-95',
+                'transition-all duration-200 hover:scale-110 active:scale-95',
                 'focus:outline-none focus:ring-2 focus:ring-peach/50',
               )"
             >
-              <StarIconSolid
-                v-if="favoritedGameIds.has(getGameId(game.name))"
-                class="w-4 h-4 text-amber-500"
-              />
+              <StarIconSolid v-if="favoritedGameIds.has(game.id)" class="w-4 h-4 text-amber-500" />
               <StarIcon v-else class="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
+
+          <!-- Card info -->
           <div class="p-3 md:p-4">
             <h3
-              class="text-sm md:text-base font-medium text-gray-800 dark:text-white group-hover:text-coral transition-colors duration-300 line-clamp-2"
+              class="text-sm md:text-base font-medium text-gray-800 dark:text-white group-hover:text-coral transition-colors duration-300 line-clamp-1"
             >
               {{ game.name }}
             </h3>
-            <p
-              class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1"
-            >
-              {{ game.section }}
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
+              {{ game.description }}
             </p>
+            <!-- Tags -->
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span
+                v-for="tag in game.tags.slice(0, 2)"
+                :key="tag"
+                class="px-1.5 py-0.5 text-xs rounded-md bg-mint/20 dark:bg-mint/10 text-gray-600 dark:text-gray-400 border border-mint/20"
+              >
+                {{ tag }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Empty State -->
+      <!-- Empty state -->
       <div
         v-else
-        :class="
-          cn(
-            'text-center py-24 rounded-xl',
-            'bg-white/40 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50',
-          )
-        "
+        :class="cn(
+          'text-center py-24 rounded-xl',
+          'bg-white/40 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50',
+        )"
       >
-        <p class="text-gray-600 dark:text-gray-400">
-          No games found
-        </p>
+        <p class="text-gray-600 dark:text-gray-400">No games found</p>
       </div>
     </div>
   </div>

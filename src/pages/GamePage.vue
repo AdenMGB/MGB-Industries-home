@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftIcon,
@@ -15,10 +15,26 @@ import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { useAuth } from '@/composables/useAuth'
 import { fetchSaveData, injectSaveDataIntoIframe, setupPostMessageSync, forceSaveGame } from '@/utils/gameSaveSync'
+import { recordArcadeVisit } from '@/utils/arcadeSaveSync'
 import { api } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { setMeta } from '@/composables/useMeta'
 import { SITE_URL } from '@/config/seo'
+import { ARCADE_GAME_IDS, getArcadeGame } from '@/config/arcadeGames'
+
+// Lazy-import map for in-house games
+const GAME_COMPONENTS: Record<string, ReturnType<typeof defineAsyncComponent>> = {
+  'arcade-snake': defineAsyncComponent(() => import('@/components/arcade/games/SnakeGame.vue')),
+  'arcade-breakout': defineAsyncComponent(() => import('@/components/arcade/games/BreakoutGame.vue')),
+  'arcade-memory': defineAsyncComponent(() => import('@/components/arcade/games/MemoryGame.vue')),
+  'arcade-pong': defineAsyncComponent(() => import('@/components/arcade/games/PongGame.vue')),
+  'arcade-whack': defineAsyncComponent(() => import('@/components/arcade/games/WhackGame.vue')),
+  'arcade-simon': defineAsyncComponent(() => import('@/components/arcade/games/SimonGame.vue')),
+  'arcade-stacker': defineAsyncComponent(() => import('@/components/arcade/games/StackerGame.vue')),
+  'arcade-flappy': defineAsyncComponent(() => import('@/components/arcade/games/FlappyGame.vue')),
+  'arcade-reaction': defineAsyncComponent(() => import('@/components/arcade/games/ReactionGame.vue')),
+  'arcade-match3': defineAsyncComponent(() => import('@/components/arcade/games/Match3Game.vue')),
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -27,25 +43,35 @@ const { success, error: showError } = useToast()
 
 const gameId = computed(() => route.params.id as string)
 const gameHref = computed(() => route.query.href as string || `Gams-main/g/${gameId.value}.html`)
+
+const isInHouse = computed(() =>
+  ARCADE_GAME_IDS.has(gameId.value) || gameHref.value.startsWith('in-house:'),
+)
+
+const arcadeMeta = computed(() => getArcadeGame(gameId.value))
+
 const gameName = computed(() => {
-  // Extract game name from route params or query
-  const nameFromId = gameId.value.split('-').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ')
-  return nameFromId
+  if (arcadeMeta.value) return arcadeMeta.value.name
+  return gameId.value
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 })
 
-// Dynamic meta for game page
+const inHouseComponent = computed(() =>
+  isInHouse.value ? (GAME_COMPONENTS[gameId.value] ?? null) : null,
+)
+
 watch(
   () => ({ name: gameName.value, id: gameId.value }),
   ({ name }) => {
     setMeta({
-      title: name ? `${name} - Game` : 'Game',
-      description: `Play ${name || 'this game'} in your browser. Save progress and favorite.`,
+      title: name ? `${name} - Games` : 'Games',
+      description: `Play ${name || 'this game'} in your browser.`,
       canonical: `${SITE_URL}/games/${gameId.value}`,
     })
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const iframeRef = ref<HTMLIFrameElement>()
@@ -56,10 +82,7 @@ const isFavorite = ref(false)
 const isTogglingFavorite = ref(false)
 let cleanupSync: (() => void) | null = null
 
-// Temporarily disable the entire Games feature (keep page/route for future dev).
-const gamesComingSoon = true
-
-// For authenticated: defer game load until cloud save is fetched and injected
+// iframe-specific (legacy external games)
 const gameIframeSrc = ref<string | null>(null)
 const iframeSrcdoc = ref<string | undefined>(undefined)
 const BLANK_SRCDOC = '<html><body></body></html>'
@@ -90,12 +113,11 @@ const toggleFavorite = async () => {
 }
 
 const goBack = async () => {
-  // Force save before navigating away
-  if (isAuthenticated.value && iframeRef.value) {
+  if (!isInHouse.value && isAuthenticated.value && iframeRef.value) {
     try {
       await forceSaveGame(gameId.value, iframeRef.value)
-    } catch (error) {
-      console.warn('Failed to save before navigation:', error)
+    } catch {
+      // silently ignore
     }
   }
   router.push('/games')
@@ -103,126 +125,112 @@ const goBack = async () => {
 
 const toggleFullscreen = async () => {
   if (!gameContainerRef.value) return
-
-  type FullscreenContainer = HTMLElement & {
+  type FullscreenEl = HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void>
     msRequestFullscreen?: () => Promise<void>
   }
-  type FullscreenDocument = Document & {
+  type FullscreenDoc = Document & {
     webkitExitFullscreen?: () => Promise<void>
     msExitFullscreen?: () => Promise<void>
   }
-
   try {
     if (!isFullscreen.value) {
-      // Enter fullscreen
-      if (gameContainerRef.value.requestFullscreen) {
-        await gameContainerRef.value.requestFullscreen()
-      } else if ((gameContainerRef.value as FullscreenContainer).webkitRequestFullscreen) {
-        // Safari
-        await (gameContainerRef.value as FullscreenContainer).webkitRequestFullscreen?.()
-      } else if ((gameContainerRef.value as FullscreenContainer).msRequestFullscreen) {
-        // IE/Edge
-        await (gameContainerRef.value as FullscreenContainer).msRequestFullscreen?.()
-      }
+      const el = gameContainerRef.value as FullscreenEl
+      if (el.requestFullscreen) await el.requestFullscreen()
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+      else if (el.msRequestFullscreen) await el.msRequestFullscreen()
     } else {
-      // Exit fullscreen
-      if (document.exitFullscreen) {
-        await document.exitFullscreen()
-      } else if ((document as FullscreenDocument).webkitExitFullscreen) {
-        await (document as FullscreenDocument).webkitExitFullscreen?.()
-      } else if ((document as FullscreenDocument).msExitFullscreen) {
-        await (document as FullscreenDocument).msExitFullscreen?.()
-      }
+      const doc = document as FullscreenDoc
+      if (doc.exitFullscreen) await doc.exitFullscreen()
+      else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
+      else if (doc.msExitFullscreen) await doc.msExitFullscreen()
     }
-  } catch (error) {
-    console.error('Error toggling fullscreen:', error)
+  } catch {
+    // ignore
   }
 }
 
-// When auth completes after mount (e.g. refresh or login redirect), update UI
 watch(isAuthenticated, async (val) => {
   if (val) {
     try {
-      await api.recordGameVisit(gameId.value, gameName.value, gameHref.value)
       const favRes = await api.getGameFavorites()
       const favIds = new Set((favRes.data?.favorites || []).map((f) => f.game_id))
       isFavorite.value = favIds.has(gameId.value)
-    } catch (error) {
-      console.warn('Failed to update game state after auth:', error)
+    } catch {
+      // ignore
     }
   }
 })
 
-// Listen for fullscreen changes
 const handleFullscreenChange = () => {
   isFullscreen.value = !!(
     document.fullscreenElement ||
-    (document as unknown as { webkitFullscreenElement?: Element; msFullscreenElement?: Element }).webkitFullscreenElement ||
-    (document as unknown as { webkitFullscreenElement?: Element; msFullscreenElement?: Element }).msFullscreenElement
+    (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+    (document as unknown as { msFullscreenElement?: Element }).msFullscreenElement
   )
 }
 
 onMounted(async () => {
-  // Check initial fullscreen state
   handleFullscreenChange()
-
-  // Listen for fullscreen changes
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
   document.addEventListener('msfullscreenchange', handleFullscreenChange)
 
-  gsap.fromTo('.game-container',
+  gsap.fromTo(
+    '.game-container',
     { opacity: 0, scale: 0.95 },
-    { opacity: 1, scale: 1, duration: 0.4, ease: 'cubic-bezier(0.4, 0, 0.2, 1)' }
+    { opacity: 1, scale: 1, duration: 0.4, ease: 'cubic-bezier(0.4, 0, 0.2, 1)' },
   )
 
-  // Games feature disabled: show placeholder and skip all game iframe + API logic.
-  if (gamesComingSoon) {
-    isLoading.value = false
-    return
-  }
-
-  // Record game visit and check favorite status if authenticated
+  // Check favorites for any game
   if (isAuthenticated.value) {
     try {
-      await api.recordGameVisit(gameId.value, gameName.value, gameHref.value)
       const favRes = await api.getGameFavorites()
       const favIds = new Set((favRes.data?.favorites || []).map((f) => f.game_id))
       isFavorite.value = favIds.has(gameId.value)
-    } catch (error) {
-      // Silently fail - don't block game loading
-      console.warn('Failed to record game visit:', error)
+    } catch {
+      // ignore
     }
   }
 
-  // Set up game loading - for authenticated users, fetch cloud save BEFORE loading game
+  if (isInHouse.value) {
+    // Record visit + mark loading done immediately (no iframe to wait for)
+    isLoading.value = false
+    if (isAuthenticated.value) {
+      await recordArcadeVisit(gameId.value, gameName.value, gameHref.value)
+    }
+    return
+  }
+
+  // Legacy iframe path
+  if (isAuthenticated.value) {
+    try {
+      await api.recordGameVisit(gameId.value, gameName.value, gameHref.value)
+    } catch {
+      // ignore
+    }
+  }
+
   if (isAuthenticated.value && iframeRef.value) {
     let hasInjectedSave = false
 
     const handleIframeLoad = () => {
       if (!iframeRef.value) return
-
       if (!hasInjectedSave) {
-        // Phase 1: blank srcdoc just loaded - inject save data, then load game
         injectSaveDataIntoIframe(iframeRef.value, savedData)
         hasInjectedSave = true
         gameIframeSrc.value = `/games/${gameHref.value}`
         iframeSrcdoc.value = undefined
       } else {
-        // Phase 2: game loaded - set up sync and hide loading
         cleanupSync = setupPostMessageSync(gameId.value, iframeRef.value)
         isLoading.value = false
       }
     }
 
     iframeRef.value.addEventListener('load', handleIframeLoad)
-
-    // Fetch cloud save first, then load blank iframe to inject before game starts
     const savedData = await fetchSaveData(gameId.value)
     iframeSrcdoc.value = BLANK_SRCDOC
   } else {
-    // Not authenticated - load game directly (effectiveGameSrc already has game URL)
     iframeRef.value?.addEventListener('load', () => {
       isLoading.value = false
     }, { once: true })
@@ -233,12 +241,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Remove fullscreen listeners
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
   document.removeEventListener('msfullscreenchange', handleFullscreenChange)
-
-  // Cleanup sync on unmount (this also removes the beforeunload handler)
   if (cleanupSync) {
     cleanupSync()
     cleanupSync = null
@@ -251,41 +256,56 @@ onUnmounted(() => {
     <div class="max-w-7xl mx-auto" :class="{ 'max-w-none mx-0': isFullscreen }">
       <!-- Header Actions -->
       <div v-if="!isFullscreen" class="mb-6 flex items-center gap-4 flex-wrap">
-        <!-- Back button -->
         <button
           @click="goBack"
           :class="cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal',
-            'bg-white/40 backdrop-blur-md border border-gray-200/50',
-            'hover:bg-white/60 transition-all duration-300',
+            'bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50',
+            'hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all duration-200',
             'hover:scale-105 active:scale-95',
-            'text-gray-700 hover:text-gray-800',
+            'text-gray-700 dark:text-gray-200',
           )"
         >
           <ArrowLeftIcon class="w-4 h-4" />
           Back to Games
         </button>
 
-        <!-- Save Status Box -->
+        <!-- Game name badge (in-house only) -->
         <div
-          v-if="isAuthenticated"
+          v-if="arcadeMeta"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50"
+        >
+          <span>{{ arcadeMeta.emoji }}</span>
+          <span class="font-medium text-gray-800 dark:text-white">{{ arcadeMeta.name }}</span>
+          <span
+            v-for="tag in arcadeMeta.tags"
+            :key="tag"
+            class="px-1.5 py-0.5 text-xs rounded-md bg-mint/20 dark:bg-mint/10 text-gray-600 dark:text-gray-400"
+          >
+            {{ tag }}
+          </span>
+        </div>
+
+        <!-- Cloud sync banner (legacy iframe) -->
+        <div
+          v-if="isAuthenticated && !isInHouse"
           :class="cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm',
-            'bg-green-50/80 backdrop-blur-md border border-green-200/50',
-            'text-green-700',
+            'bg-green-50/80 dark:bg-green-900/30 backdrop-blur-md border border-green-200/50 dark:border-green-700/50',
+            'text-green-700 dark:text-green-300',
           )"
         >
           <CloudArrowUpIcon class="w-4 h-4 animate-pulse" />
-          <span class="font-medium">Syncing progress with cloud</span>
+          <span class="font-medium">Syncing with cloud</span>
         </div>
 
-        <!-- Sign In Prompt -->
+        <!-- Sign in prompt (legacy iframe, unauthenticated) -->
         <div
-          v-else
+          v-else-if="!isAuthenticated && !isInHouse"
           :class="cn(
             'flex items-center gap-3 px-4 py-2 rounded-lg text-sm',
             'bg-peach/20 backdrop-blur-md border border-peach/30',
-            'text-gray-700',
+            'text-gray-700 dark:text-gray-200',
           )"
         >
           <UserPlusIcon class="w-4 h-4" />
@@ -295,125 +315,108 @@ onUnmounted(() => {
             :class="cn(
               'flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium',
               'bg-peach/30 hover:bg-peach/40 text-gray-800',
-              'transition-all duration-300 transform-gpu hover:scale-105 active:scale-95',
+              'transition-all duration-200 hover:scale-105 active:scale-95',
             )"
           >
-            Sign Up
-            <ArrowRightIcon class="w-3 h-3" />
+            Sign Up <ArrowRightIcon class="w-3 h-3" />
           </router-link>
           <span class="text-gray-500">or</span>
           <router-link
             :to="{ path: '/login', query: { redirect: route.fullPath } }"
-            :class="cn(
-              'px-3 py-1 rounded-md text-xs font-medium',
-              'text-gray-700 hover:text-gray-800 underline',
-              'transition-colors duration-300',
-            )"
+            class="px-3 py-1 rounded-md text-xs font-medium text-gray-700 hover:text-gray-800 underline"
           >
             Sign In
           </router-link>
         </div>
       </div>
 
-      <!-- Game iframe -->
+      <!-- Game container -->
       <div class="game-container" :class="{ 'fixed inset-0 z-50': isFullscreen }">
         <div
           ref="gameContainerRef"
           :class="cn(
             'w-full rounded-xl overflow-hidden relative',
-            'bg-white/40 backdrop-blur-md border border-gray-200/50',
-            'shadow-lg',
-            'transition-all duration-300',
+            'bg-white/40 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50',
+            'shadow-lg transition-all duration-300',
             isFullscreen && 'rounded-none border-0 shadow-none',
           )"
           :style="isFullscreen ? 'height: 100vh; width: 100vw;' : 'height: calc(100vh - 200px); min-height: 600px;'"
         >
-          <div
-            v-if="gamesComingSoon"
-            class="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm z-10 text-center px-6"
-          >
-            <div>
-              <p class="text-xl font-semibold text-gray-800">Games Coming soon</p>
+          <!-- In-house Vue game — ArcadeShell owns the HUD including fullscreen + favorite -->
+          <div v-if="isInHouse" class="absolute inset-0 p-3 overflow-auto">
+            <component
+              :is="inHouseComponent"
+              v-if="inHouseComponent"
+              class="h-full"
+              :is-fullscreen="isFullscreen"
+              :is-favorite="isFavorite"
+              :show-favorite="isAuthenticated && !isFullscreen"
+              :show-fullscreen="true"
+              @toggle-favorite="toggleFavorite"
+              @toggle-fullscreen="toggleFullscreen"
+            />
+            <div v-else class="flex items-center justify-center h-full">
+              <p class="text-gray-600 dark:text-gray-400">Game not found.</p>
             </div>
           </div>
 
-          <!-- Favorite button (logged in only) -->
-          <button
-            v-if="isAuthenticated && !isFullscreen && !gamesComingSoon"
-            @click="toggleFavorite"
-            :disabled="isTogglingFavorite"
-            :aria-label="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
-            :class="cn(
-              'absolute top-4 right-14 z-20',
-              'flex items-center justify-center w-10 h-10 rounded-lg',
-              'bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
-              'hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300',
-              'hover:scale-105 active:scale-95',
-              'text-gray-700 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100',
-              'shadow-md',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-            )"
-            :title="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
-          >
-            <StarIconSolid v-if="isFavorite" class="w-5 h-5 text-amber-500" />
-            <StarIcon v-else class="w-5 h-5" />
-          </button>
+          <!-- Iframe for legacy external games -->
+          <template v-else>
+            <!-- Top-right action row: favorite + fullscreen side by side, no overlap -->
+            <div class="absolute top-3 right-3 z-20 flex items-center gap-2">
+              <button
+                v-if="isAuthenticated && !isFullscreen"
+                @click="toggleFavorite"
+                :disabled="isTogglingFavorite"
+                :aria-label="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+                :class="cn(
+                  'flex items-center justify-center w-9 h-9 rounded-lg',
+                  'bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
+                  'hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-200',
+                  'hover:scale-105 active:scale-95 text-gray-700 dark:text-gray-300 shadow-md',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                )"
+              >
+                <StarIconSolid v-if="isFavorite" class="w-4 h-4 text-amber-500" />
+                <StarIcon v-else class="w-4 h-4" />
+              </button>
 
-          <!-- Fullscreen button -->
-          <button
-            @click="toggleFullscreen"
-            :class="cn(
-              'absolute top-4 right-4 z-20',
-              'flex items-center justify-center w-10 h-10 rounded-lg',
-              'bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
-              'hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300',
-              'hover:scale-105 active:scale-95',
-              'text-gray-700 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100',
-              'shadow-md',
-            )"
-            :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
-          >
-            <ArrowsPointingInIcon
-              v-if="isFullscreen"
-              class="w-5 h-5"
-            />
-            <ArrowsPointingOutIcon
-              v-else
-              class="w-5 h-5"
-            />
-          </button>
-
-          <!-- Loading indicator -->
-          <div
-            v-if="isLoading && !gamesComingSoon"
-            class="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm z-10"
-          >
-            <div class="text-center">
-              <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mb-2"></div>
-              <p class="text-sm text-gray-600">Loading game...</p>
+              <button
+                @click="toggleFullscreen"
+                :class="cn(
+                  'flex items-center justify-center w-9 h-9 rounded-lg',
+                  'bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
+                  'hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-200',
+                  'hover:scale-105 active:scale-95 text-gray-700 dark:text-gray-300 shadow-md',
+                )"
+                :title="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
+              >
+                <ArrowsPointingInIcon v-if="isFullscreen" class="w-4 h-4" />
+                <ArrowsPointingOutIcon v-else class="w-4 h-4" />
+              </button>
             </div>
-          </div>
 
-          <iframe
-            v-if="!gamesComingSoon"
-            ref="iframeRef"
-            :src="effectiveGameSrc"
-            :srcdoc="iframeSrcdoc"
-            class="w-full h-full border-0"
-            frameborder="0"
-            allowfullscreen
-          />
+            <!-- Loading -->
+            <div
+              v-if="isLoading"
+              class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm z-10"
+            >
+              <div class="text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 dark:border-gray-200 mb-2" />
+                <p class="text-sm text-gray-600 dark:text-gray-400">Loading game…</p>
+              </div>
+            </div>
+
+            <iframe
+              ref="iframeRef"
+              :src="effectiveGameSrc"
+              :srcdoc="iframeSrcdoc"
+              class="w-full h-full border-0"
+              frameborder="0"
+              allowfullscreen
+            />
+          </template>
         </div>
-      </div>
-
-      <!-- Save status indicator -->
-      <div
-        v-if="isAuthenticated && !isFullscreen && !gamesComingSoon"
-        class="mt-4 text-center"
-      >
-        <p class="text-xs text-gray-500">
-          Your game progress is being saved automatically
-        </p>
       </div>
     </div>
   </div>
