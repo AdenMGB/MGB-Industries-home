@@ -9,6 +9,7 @@ import GitBranchSelect from '@/components/GitBranchSelect.vue'
 import GitEmbedSection from '@/components/GitEmbedSection.vue'
 import GitShareLink from '@/components/GitShareLink.vue'
 import { gitApi } from '@/api/git'
+import { queryFirstString } from '@/utils/route-query'
 
 const router = useRouter()
 const route = useRoute()
@@ -80,11 +81,23 @@ function message(c: Record<string, unknown>): string {
 
 const goBack = () => window.history.back()
 
-watch(() => route.query.url, (url) => { if (url) repoUrl.value = url })
-watch(() => route.query.sha, (s) => { if (s) branch.value = s })
-watch(() => route.query.author, (a) => { if (a !== undefined) author.value = a })
-watch(() => route.query.since, (s) => { if (s !== undefined) since.value = s })
-watch(() => route.query.until, (u) => { if (u !== undefined) until.value = u })
+watch(() => route.query.url, (url) => {
+  const s = queryFirstString(url)
+  if (s) repoUrl.value = s
+})
+watch(() => route.query.sha, (sha) => {
+  const s = queryFirstString(sha)
+  if (s) branch.value = s
+})
+watch(() => route.query.author, (a) => {
+  if (a !== undefined) author.value = queryFirstString(a)
+})
+watch(() => route.query.since, (s) => {
+  if (s !== undefined) since.value = queryFirstString(s)
+})
+watch(() => route.query.until, (u) => {
+  if (u !== undefined) until.value = queryFirstString(u)
+})
 
 function syncUrl() {
   const u = repoUrl.value.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')

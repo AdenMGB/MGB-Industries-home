@@ -66,6 +66,8 @@ type ConversionType =
 
 type GameType = 'classic' | 'speed-round' | 'survival' | 'streak-challenge' | 'nibble-sprint' | 'octet-sprint'
 
+type LeaderboardMode = (typeof VALID_LB_MODES)[number]
+
 const tabs = [
   { id: 'calculator' as TabId, label: 'Calculator', icon: CalculatorIcon },
   { id: 'table' as TabId, label: 'Reference Table', icon: TableCellsIcon },
@@ -113,6 +115,10 @@ const tableByte = computed(() =>
 const conversionType = ref<ConversionType>(parseFromQuery(route.query as Record<string, unknown>, 'conv', VALID_CONV) ?? 'binary-standalone')
 const gameType = ref<GameType>(parseFromQuery(route.query as Record<string, unknown>, 'game', VALID_GAMES) ?? 'classic')
 const showPowerTable = ref(true)
+
+/** Sidebar: matches ConversionBoxInput segmented-binary UX */
+const useSegmentedBoxes = computed(() => conversionType.value !== 'ipv4-full')
+const powerTable = [128, 64, 32, 16, 8, 4, 2, 1] as const
 const conversionBoxRef = ref<InstanceType<typeof ConversionBoxInput> | null>(null)
 const questionRef = ref<HTMLElement | null>(null)
 const practiceQuestion = ref<{ value: string; answer: string } | null>(null)
@@ -153,7 +159,9 @@ const progress = ref<{
 } | null>(null)
 const unlockedAchievements = ref<Set<string>>(new Set())
 const leaderboard = ref<Array<{ rank: number; userName: string; score: number; createdAt: string }>>([])
-const leaderboardMode = ref(parseFromQuery(route.query as Record<string, unknown>, 'lbMode', VALID_LB_MODES) ?? 'speed-round')
+const leaderboardMode = ref<LeaderboardMode>(
+  parseFromQuery(route.query as Record<string, unknown>, 'lbMode', VALID_LB_MODES) ?? 'speed-round',
+)
 const leaderboardConv = ref<ConversionType>(parseFromQuery(route.query as Record<string, unknown>, 'lbConv', VALID_CONV) ?? 'binary-standalone')
 const leaderboardLoading = ref(false)
 const leaderboardFullscreen = ref(route.query.lb === '1')
@@ -615,8 +623,14 @@ watch(gameType, (newType, oldType) => {
   if (newType === 'nibble-sprint' || newType === 'octet-sprint') {
     conversionType.value = 'binary-standalone'
   }
-  // Sync leaderboard mode to game mode when switching
-  if (['speed-round', 'survival', 'streak-challenge', 'nibble-sprint', 'octet-sprint'].includes(newType)) {
+  // Sync leaderboard mode to game mode when switching (exclude classic / daily-only)
+  if (
+    newType === 'speed-round' ||
+    newType === 'survival' ||
+    newType === 'streak-challenge' ||
+    newType === 'nibble-sprint' ||
+    newType === 'octet-sprint'
+  ) {
     leaderboardMode.value = newType
     leaderboardConv.value = conversionType.value
     loadLeaderboard()

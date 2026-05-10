@@ -2,9 +2,15 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
-import { EnvelopeIcon, LockClosedIcon } from '@heroicons/vue/24/outline'
+import {
+  EnvelopeIcon,
+  LockClosedIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  ShieldExclamationIcon,
+  ArrowRightIcon,
+} from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const route = useRoute()
@@ -12,6 +18,7 @@ const { login } = useAuth()
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const error = ref('')
 const isLoading = ref(false)
 
@@ -19,32 +26,20 @@ const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 onMounted(async () => {
   await nextTick()
-  
-  gsap.set('.page-header', { opacity: 0, y: 30, scale: 0.96 })
-  gsap.set('.form-container', { opacity: 0, y: 20, scale: 0.98 })
-  
+
+  gsap.set('.auth-aside', { opacity: 0, x: -30 })
+  gsap.set('.auth-card', { opacity: 0, y: 24, scale: 0.98 })
+  gsap.set('.auth-field', { opacity: 0, y: 16 })
+
   const tl = gsap.timeline({ defaults: { ease: premiumEase } })
-  
-  tl.to('.page-header', {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.6,
-  }, 0)
-  
-  tl.to('.form-container', {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.5,
-    delay: 0.1,
-  }, 0)
+  tl.to('.auth-aside', { opacity: 1, x: 0, duration: 0.7 }, 0)
+  tl.to('.auth-card', { opacity: 1, y: 0, scale: 1, duration: 0.6 }, 0.05)
+  tl.to('.auth-field', { opacity: 1, y: 0, duration: 0.45, stagger: 0.06 }, 0.2)
 })
 
 const handleSubmit = async () => {
   error.value = ''
   isLoading.value = true
-
   try {
     await login(email.value, password.value)
     const redirect = (route.query.redirect as string) || '/account'
@@ -58,52 +53,71 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen py-24 px-4 md:px-8 flex items-center justify-center">
-    <div class="max-w-md w-full">
-      <!-- Header -->
-      <div class="page-header mb-8 text-center">
-        <h1 class="text-5xl md:text-6xl font-light mb-4 tracking-tight text-gray-800">
-          Login
-        </h1>
-        <p class="text-base text-gray-600">
-          Sign in to your account
+  <div class="min-h-screen pt-32 pb-16 px-4 md:px-8 flex items-center justify-center">
+    <div class="max-w-5xl w-full grid md:grid-cols-12 gap-10 md:gap-16 items-center">
+      <!-- Left side: editorial intro -->
+      <aside class="auth-aside md:col-span-5 space-y-6">
+        <p class="font-mono text-xs uppercase tracking-[0.32em] text-ochre-500/90">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-ochre-500 align-middle mr-2" />
+          Welcome back
         </p>
-      </div>
-
-      <!-- Form -->
-      <div class="form-container">
-        <div
-          :class="cn(
-            'p-8 rounded-xl',
-            'bg-white/40 backdrop-blur-md',
-            'border border-gray-200/50',
-            'shadow-lg',
-          )"
+        <h1
+          class="font-display text-balance text-5xl md:text-6xl tracking-tight leading-[0.95] text-charcoal-500 dark:text-cream-100"
         >
-          <form @submit.prevent="handleSubmit" class="space-y-6">
-            <!-- Error message -->
+          The shop is
+          <span class="italic text-terracotta-500 dark:text-ochre-300">open.</span>
+        </h1>
+        <p class="text-base text-charcoal-300 dark:text-cream-100/70 leading-relaxed max-w-md">
+          Sign in to sync your conversion-trainer XP, streaks and achievements
+          across devices, and to host private multiplayer rooms.
+        </p>
+        <ul class="space-y-2 pt-2 text-sm text-charcoal-400 dark:text-cream-100/70">
+          <li class="flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-ochre-500" />
+            All other tools work without an account
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-eucalyptus-400" />
+            Your password is hashed (bcrypt), never stored in plaintext
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-terracotta-500" />
+            One small Fastify server, no third-party trackers
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Right side: form -->
+      <div class="md:col-span-7">
+        <div class="auth-card rounded-3xl glass glass-edge p-8 md:p-10">
+          <header class="mb-7">
+            <p class="font-mono text-xs uppercase tracking-[0.32em] text-charcoal-200 dark:text-cream-100/50 mb-2">
+              Sign in
+            </p>
+            <h2 class="font-display text-3xl md:text-4xl tracking-tight text-charcoal-500 dark:text-cream-100">
+              Continue your work.
+            </h2>
+          </header>
+
+          <form @submit.prevent="handleSubmit" class="space-y-5">
             <div
               v-if="error"
-              :class="cn(
-                'p-4 rounded-lg',
-                'bg-red-50 border border-red-200',
-                'text-red-700 text-sm',
-              )"
+              class="auth-field rounded-xl px-4 py-3 bg-terracotta-500/10 ring-1 ring-terracotta-500/30 text-terracotta-500 text-sm flex items-center gap-2"
             >
+              <ShieldExclamationIcon class="w-4 h-4 shrink-0" />
               {{ error }}
             </div>
 
-            <!-- Email -->
-            <div>
+            <div class="auth-field">
               <label
                 for="email"
-                class="block text-sm font-medium text-gray-700 mb-2"
+                class="block text-xs font-mono uppercase tracking-[0.24em] text-charcoal-300 dark:text-cream-100/60 mb-2"
               >
                 Email
               </label>
               <div class="relative">
                 <EnvelopeIcon
-                  class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                  class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-200 dark:text-cream-100/40"
                 />
                 <input
                   id="email"
@@ -111,76 +125,81 @@ const handleSubmit = async () => {
                   type="email"
                   required
                   autocomplete="email"
-                  :class="cn(
-                    'w-full pl-10 pr-4 py-3 rounded-lg',
-                    'bg-white/60 border border-gray-200/50',
-                    'text-gray-700 placeholder-gray-400',
-                    'focus:outline-none focus:ring-2 focus:ring-peach/50',
-                    'transition-all duration-300',
-                  )"
                   placeholder="you@example.com"
+                  class="w-full pl-11 pr-4 py-3 rounded-xl bg-cream-100/70 dark:bg-charcoal-500/40 ring-1 ring-charcoal-500/15 dark:ring-cream-100/12 text-charcoal-500 dark:text-cream-100 placeholder-charcoal-200 dark:placeholder-cream-100/30 focus:outline-none focus:ring-2 focus:ring-ochre-500/60 transition-all"
                 />
               </div>
             </div>
 
-            <!-- Password -->
-            <div>
+            <div class="auth-field">
               <label
                 for="password"
-                class="block text-sm font-medium text-gray-700 mb-2"
+                class="flex items-center justify-between text-xs font-mono uppercase tracking-[0.24em] text-charcoal-300 dark:text-cream-100/60 mb-2"
               >
-                Password
+                <span>Password</span>
+                <button
+                  type="button"
+                  @click="showPassword = !showPassword"
+                  class="inline-flex items-center gap-1 text-charcoal-300 hover:text-ochre-500 transition-colors normal-case tracking-normal font-sans"
+                >
+                  <EyeSlashIcon v-if="showPassword" class="w-3.5 h-3.5" />
+                  <EyeIcon v-else class="w-3.5 h-3.5" />
+                  {{ showPassword ? 'Hide' : 'Show' }}
+                </button>
               </label>
               <div class="relative">
                 <LockClosedIcon
-                  class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                  class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-200 dark:text-cream-100/40"
                 />
                 <input
                   id="password"
                   v-model="password"
-                  type="password"
+                  :type="showPassword ? 'text' : 'password'"
                   required
                   autocomplete="current-password"
-                  :class="cn(
-                    'w-full pl-10 pr-4 py-3 rounded-lg',
-                    'bg-white/60 border border-gray-200/50',
-                    'text-gray-700 placeholder-gray-400',
-                    'focus:outline-none focus:ring-2 focus:ring-peach/50',
-                    'transition-all duration-300',
-                  )"
                   placeholder="••••••••"
+                  class="w-full pl-11 pr-4 py-3 rounded-xl bg-cream-100/70 dark:bg-charcoal-500/40 ring-1 ring-charcoal-500/15 dark:ring-cream-100/12 text-charcoal-500 dark:text-cream-100 placeholder-charcoal-200 dark:placeholder-cream-100/30 focus:outline-none focus:ring-2 focus:ring-ochre-500/60 transition-all"
                 />
               </div>
             </div>
 
-            <!-- Submit button -->
             <button
               type="submit"
               :disabled="isLoading"
-              :class="cn(
-                'w-full px-4 py-3 rounded-lg text-sm font-normal',
-                'bg-peach/30 text-gray-800',
-                'hover:bg-peach/40 transition-all duration-300',
-                'transform-gpu hover:scale-105 active:scale-95',
-                'focus:outline-none focus:ring-2 focus:ring-peach/50',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-              )"
+              data-cursor="magnetic"
+              class="auth-field group relative w-full inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-3.5 text-sm font-medium text-cream-100 bg-gradient-to-br from-ochre-500 to-terracotta-500 shadow-edge-ochre transition-all duration-300 hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
             >
-              {{ isLoading ? 'Signing in...' : 'Sign In' }}
+              <span class="relative z-10 inline-flex items-center gap-2">
+                {{ isLoading ? 'Signing you in…' : 'Sign in' }}
+                <ArrowRightIcon
+                  class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"
+                />
+              </span>
+              <span
+                aria-hidden="true"
+                class="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-[linear-gradient(120deg,transparent_0%,transparent_35%,rgba(255,255,255,0.45)_50%,transparent_65%,transparent_100%)] transition-transform duration-700"
+              />
             </button>
           </form>
 
-          <!-- Signup link -->
-          <div class="mt-6 text-center">
-            <p class="text-sm text-gray-600">
-              Don't have an account?
-              <router-link
-                to="/signup"
-                class="text-peach hover:text-coral transition-colors duration-300 font-medium"
-              >
-                Sign up
-              </router-link>
-            </p>
+          <div
+            class="mt-7 pt-5 border-t border-charcoal-500/8 dark:border-cream-100/10 flex items-center justify-between gap-3"
+          >
+            <router-link
+              to="/reset-password"
+              class="text-xs text-charcoal-300 dark:text-cream-100/60 hover:text-ochre-500 transition-colors"
+            >
+              Forgot password?
+            </router-link>
+            <router-link
+              :to="{
+                path: '/signup',
+                query: route.query.redirect ? { redirect: route.query.redirect } : {},
+              }"
+              class="text-sm text-ochre-500 hover:text-terracotta-500 transition-colors font-medium"
+            >
+              Create an account →
+            </router-link>
           </div>
         </div>
       </div>

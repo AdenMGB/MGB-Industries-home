@@ -8,6 +8,7 @@ import GitRepoInput from '@/components/GitRepoInput.vue'
 import GitEmbedSection from '@/components/GitEmbedSection.vue'
 import GitShareLink from '@/components/GitShareLink.vue'
 import { gitApi } from '@/api/git'
+import { queryFirstString } from '@/utils/route-query'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
@@ -49,7 +50,10 @@ function contributorAvatar(c: Record<string, unknown>): string {
 
 const goBack = () => router.push('/developer-tools')
 
-watch(() => route.query.url, (url) => { if (url) repoUrl.value = url })
+watch(() => route.query.url, (url) => {
+  const s = queryFirstString(url)
+  if (s) repoUrl.value = s
+})
 
 function syncUrl() {
   const u = repoUrl.value.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')

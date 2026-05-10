@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bars3Icon,
@@ -10,7 +10,7 @@ import {
   SunIcon,
   MoonIcon,
 } from '@heroicons/vue/24/outline'
-import { HomeIcon, FolderIcon, UserIcon, EnvelopeIcon, CubeIcon, CommandLineIcon } from '@heroicons/vue/24/solid'
+import { HomeIcon, UserIcon, CommandLineIcon } from '@heroicons/vue/24/solid'
 import { cn } from '@/utils/cn'
 import { gsap } from 'gsap'
 import { useAuth } from '@/composables/useAuth'
@@ -29,18 +29,13 @@ const accountDropdownRef = ref<HTMLElement>()
 
 const navItems = [
   { name: 'Home', path: '/', icon: HomeIcon },
-  { name: 'Projects', path: '/projects', icon: FolderIcon },
-  { name: 'Games', path: '/games', icon: CubeIcon },
-  { name: 'Dev Tools', path: '/developer-tools', icon: CommandLineIcon },
-  { name: 'About', path: '/about', icon: UserIcon },
-  { name: 'Contact', path: '/contact', icon: EnvelopeIcon },
+  { name: 'Utilities', path: '/developer-tools', icon: CommandLineIcon },
 ]
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 const toggleNav = () => {
   if (isOpen.value) {
-    // Closing: animate first, then update state so backdrop stays during animation
     if (backdropRef.value) {
       gsap.to(backdropRef.value, {
         opacity: 0,
@@ -54,57 +49,27 @@ const toggleNav = () => {
       isOpen.value = false
     }
     if (navRef.value) {
-      gsap.to(navRef.value, {
-        x: '-100%',
-        duration: 0.3,
-        ease: premiumEase,
-      })
+      gsap.to(navRef.value, { x: '-100%', duration: 0.3, ease: premiumEase })
     }
   } else {
-    // Opening: set state first, then animate after nextTick (backdrop needs to be in DOM)
     isOpen.value = true
     nextTick(() => {
       if (backdropRef.value && navRef.value) {
-        // Backdrop with blur animation
         gsap.fromTo(
           backdropRef.value,
-          {
-            opacity: 0,
-            backdropFilter: 'blur(0px)',
-          },
-          {
-            opacity: 1,
-            backdropFilter: 'blur(20px)',
-            duration: 0.3,
-            ease: premiumEase,
-          },
+          { opacity: 0, backdropFilter: 'blur(0px)' },
+          { opacity: 1, backdropFilter: 'blur(20px)', duration: 0.3, ease: premiumEase },
         )
-
-        // Slide menu with scale
         gsap.fromTo(
           navRef.value,
-          {
-            x: '-100%',
-            scale: 0.95,
-          },
-          {
-            x: '0%',
-            scale: 1,
-            duration: 0.4,
-            ease: premiumEase,
-          },
+          { x: '-100%', scale: 0.95 },
+          { x: '0%', scale: 1, duration: 0.4, ease: premiumEase },
         )
-
-        // Stagger nav items
         const items = navRef.value.querySelectorAll('a')
         if (items) {
           gsap.fromTo(
             items,
-            {
-              opacity: 0,
-              x: -20,
-              scale: 0.9,
-            },
+            { opacity: 0, x: -20, scale: 0.9 },
             {
               opacity: 1,
               x: 0,
@@ -150,7 +115,6 @@ const handleLogout = () => {
   router.push('/')
 }
 
-// Close dropdown when clicking outside
 const handleClickOutside = (event: MouseEvent) => {
   if (
     accountDropdownRef.value &&
@@ -160,19 +124,17 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
-const isActive = (path: string) => route.path === path
+const isActive = (path: string) => {
+  if (path === '/') return route.path === '/'
+  return route.path === path || route.path.startsWith(path + '/')
+}
 
-// Animate nav items on mount and when auth state changes
 const animateNavItems = () => {
   setTimeout(() => {
     const desktopNavItems = document.querySelectorAll('.desktop-nav-item')
     gsap.fromTo(
       desktopNavItems,
-      {
-        opacity: 0,
-        y: -10,
-        scale: 0.95,
-      },
+      { opacity: 0, y: -10, scale: 0.95 },
       {
         opacity: 1,
         y: 0,
@@ -194,9 +156,8 @@ watch(
 )
 
 onMounted(() => {
-  // Check auth in background (non-blocking)
   checkAuth().catch(() => {
-    // Silently handle errors
+    /* silently handle errors */
   })
   document.addEventListener('click', handleClickOutside)
   animateNavItems()
@@ -210,40 +171,61 @@ onUnmounted(() => {
 <template>
   <nav
     v-show="!(route.name === 'ConversionTrainer' && route.query.fullscreen === '1')"
-    class="fixed top-0 left-0 right-0 z-50 p-6 md:p-8"
+    class="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4"
   >
-    <div class="flex items-center justify-between max-w-7xl mx-auto">
-      <!-- Logo/Brand with animation -->
+    <div
+      :class="cn(
+        'flex items-center justify-between max-w-7xl mx-auto',
+        'rounded-2xl px-4 md:px-6 py-3',
+        'glass glass-edge',
+      )"
+    >
+      <!-- Brand -->
       <router-link
         to="/"
-        class="text-2xl font-light tracking-tight text-gray-800 dark:text-gray-200 hover:text-coral transition-all duration-300 transform-gpu hover:scale-105"
+        data-cursor="magnetic"
+        class="group flex items-center gap-3"
       >
-        AdenMGB
+        <span
+          class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-ochre-400 via-ochre-500 to-terracotta-500 text-cream-100 font-display text-base font-semibold shadow-edge-ochre transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-105"
+        >
+          A
+        </span>
+        <span class="flex flex-col leading-none">
+          <span class="font-display text-lg md:text-xl font-medium tracking-tight text-charcoal-500 dark:text-cream-100">
+            AdenMGB
+          </span>
+          <span class="text-[10px] uppercase tracking-widest text-charcoal-200 dark:text-cream-300/70 mt-0.5">
+            Carefully Crafted
+          </span>
+        </span>
       </router-link>
 
       <!-- Desktop Nav -->
-      <div class="hidden md:flex items-center gap-2">
+      <div class="hidden md:flex items-center gap-1">
         <router-link
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
+          data-cursor="magnetic"
           class="desktop-nav-item"
           :class="
             cn(
-              'px-4 py-2 rounded-lg text-sm font-normal',
+              'relative px-4 py-2 rounded-xl text-sm font-medium',
               'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
+              'hover:scale-[1.04] active:scale-[0.97]',
               isActive(item.path)
-                ? 'bg-peach/20 dark:bg-peach/30 text-gray-800 dark:text-white scale-105'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50',
+                ? 'text-charcoal-500 dark:text-cream-100'
+                : 'text-charcoal-200 hover:text-charcoal-500 dark:text-cream-100/70 dark:hover:text-cream-100',
             )
           "
         >
+          <span
+            v-if="isActive(item.path)"
+            class="absolute inset-0 -z-10 rounded-xl bg-ochre-500/15 dark:bg-ochre-400/15 ring-1 ring-ochre-500/30"
+          />
           <span class="flex items-center gap-2">
-            <component
-              :is="item.icon"
-              class="w-4 h-4 transition-transform duration-300 group-hover:rotate-12"
-            />
+            <component :is="item.icon" class="w-4 h-4" />
             {{ item.name }}
           </span>
         </router-link>
@@ -251,13 +233,12 @@ onUnmounted(() => {
         <!-- Theme Toggle -->
         <button
           @click="toggleTheme"
+          data-cursor="magnetic"
           :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
           :class="cn(
-            'p-2 rounded-lg text-sm font-normal',
-            'transition-all duration-300 transform-gpu',
-            'hover:scale-105 active:scale-95',
-            'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200',
-            'hover:bg-white/40 dark:hover:bg-gray-700/40',
+            'p-2 rounded-xl text-charcoal-200 dark:text-cream-100/70',
+            'hover:text-charcoal-500 dark:hover:text-cream-100',
+            'transition-all duration-300 transform-gpu hover:scale-110 active:scale-95',
           )"
         >
           <SunIcon v-if="themeMode === 'dark'" class="w-5 h-5" />
@@ -268,22 +249,23 @@ onUnmounted(() => {
         <div v-if="!isAuthenticated" class="flex items-center gap-2 ml-2">
           <router-link
             :to="{ path: '/login', query: { redirect: route.fullPath } }"
+            data-cursor="magnetic"
             :class="cn(
-              'px-4 py-2 rounded-lg text-sm font-normal',
-              'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
-              'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50',
+              'px-4 py-2 rounded-xl text-sm font-medium',
+              'text-charcoal-300 hover:text-charcoal-500 dark:text-cream-100/70 dark:hover:text-cream-100',
+              'transition-all duration-300 transform-gpu hover:scale-[1.04] active:scale-[0.97]',
             )"
           >
             Sign In
           </router-link>
           <router-link
             :to="{ path: '/signup', query: { redirect: route.fullPath } }"
+            data-cursor="magnetic"
             :class="cn(
-              'px-4 py-2 rounded-lg text-sm font-normal',
-              'bg-peach/30 dark:bg-peach/30 text-gray-800 dark:text-white',
-              'hover:bg-peach/40 dark:hover:bg-peach/40 transition-all duration-300',
-              'transform-gpu hover:scale-105 active:scale-95',
+              'px-4 py-2 rounded-xl text-sm font-medium text-cream-100',
+              'bg-gradient-to-br from-ochre-500 to-terracotta-500',
+              'shadow-edge-ochre hover:shadow-glow',
+              'transition-all duration-300 transform-gpu hover:scale-[1.04] active:scale-[0.97]',
             )"
           >
             Sign Up
@@ -291,114 +273,116 @@ onUnmounted(() => {
         </div>
 
         <!-- Account Dropdown -->
-        <div
-          v-else
-          ref="accountDropdownRef"
-          class="relative ml-2"
-        >
+        <div v-else ref="accountDropdownRef" class="relative ml-2">
           <button
+            data-cursor="magnetic"
             @click.stop="isAccountDropdownOpen = !isAccountDropdownOpen"
             :class="cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal',
+              'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium',
               'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
-              'text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50',
-              isAccountDropdownOpen && 'bg-white/40 dark:bg-gray-700/50',
+              'hover:scale-[1.04] active:scale-[0.97]',
+              isAccountDropdownOpen
+                ? 'bg-ochre-500/15 ring-1 ring-ochre-500/30 text-charcoal-500 dark:text-cream-100'
+                : 'text-charcoal-300 hover:text-charcoal-500 dark:text-cream-100/80 dark:hover:text-cream-100',
             )"
           >
-            <UserIcon class="w-4 h-4" />
-            <span class="max-w-[100px] truncate">{{ user?.name }}</span>
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-ochre-400 to-terracotta-500 text-cream-100 text-xs font-semibold"
+            >
+              {{ (user?.name || user?.email || 'A').slice(0, 1).toUpperCase() }}
+            </span>
+            <span class="max-w-[110px] truncate">{{ user?.name }}</span>
             <ChevronDownIcon
               class="w-4 h-4 transition-transform duration-300"
               :class="{ 'rotate-180': isAccountDropdownOpen }"
             />
           </button>
 
-          <!-- Dropdown Menu -->
-          <div
-            v-if="isAccountDropdownOpen"
-            :class="cn(
-              'absolute right-0 mt-2 w-56 rounded-xl',
-              'bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50',
-              'shadow-lg overflow-hidden',
-            )"
+          <Transition
+            enter-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            enter-from-class="opacity-0 scale-95 translate-y-1"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            leave-active-class="transition-all duration-150 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95 translate-y-1"
           >
-            <div class="p-2 space-y-1">
-              <!-- User Info -->
-              <div class="px-3 py-2 border-b border-gray-200/50 dark:border-gray-600/50">
-                <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{{ user?.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ user?.email }}</p>
-                <span
-                  v-if="isAdmin"
+            <div
+              v-if="isAccountDropdownOpen"
+              :class="cn(
+                'absolute right-0 mt-3 w-64 rounded-2xl overflow-hidden',
+                'glass glass-edge',
+              )"
+            >
+              <div class="p-2 space-y-1">
+                <div class="px-3 py-3 border-b border-charcoal-500/10 dark:border-cream-100/10">
+                  <p class="text-sm font-medium text-charcoal-500 dark:text-cream-100 truncate">
+                    {{ user?.name }}
+                  </p>
+                  <p class="text-xs text-charcoal-200 dark:text-cream-300/70 truncate">
+                    {{ user?.email }}
+                  </p>
+                  <span
+                    v-if="isAdmin"
+                    class="inline-block mt-1.5 px-2 py-0.5 text-[10px] uppercase tracking-widest font-semibold rounded-md bg-terracotta-500/15 text-terracotta-500 dark:text-terracotta-200"
+                  >
+                    Admin
+                  </span>
+                </div>
+
+                <router-link
+                  to="/account"
+                  @click="isAccountDropdownOpen = false"
                   :class="cn(
-                    'inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-md',
-                    'bg-peach/30 text-gray-800',
+                    'flex items-center gap-3 px-3 py-2 rounded-xl text-sm',
+                    'text-charcoal-400 dark:text-cream-100/85',
+                    'hover:bg-ochre-500/15 hover:text-charcoal-500 dark:hover:text-cream-100',
+                    'transition-all duration-200 hover:scale-[1.02]',
                   )"
                 >
-                  Admin
-                </span>
+                  <UserIcon class="w-4 h-4" />
+                  <span>Account</span>
+                </router-link>
+
+                <router-link
+                  v-if="isAdmin"
+                  to="/admin"
+                  @click="isAccountDropdownOpen = false"
+                  :class="cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-xl text-sm',
+                    'text-charcoal-400 dark:text-cream-100/85',
+                    'hover:bg-terracotta-500/15 hover:text-charcoal-500 dark:hover:text-cream-100',
+                    'transition-all duration-200 hover:scale-[1.02]',
+                  )"
+                >
+                  <ShieldCheckIcon class="w-4 h-4" />
+                  <span>Admin Dashboard</span>
+                </router-link>
+
+                <button
+                  @click="handleLogout"
+                  :class="cn(
+                    'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm',
+                    'text-terracotta-500 hover:bg-terracotta-500/10',
+                    'transition-all duration-200 hover:scale-[1.02]',
+                  )"
+                >
+                  <ArrowRightOnRectangleIcon class="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
               </div>
-
-              <!-- Account Link -->
-              <router-link
-                to="/account"
-                @click="isAccountDropdownOpen = false"
-                :class="cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
-                  'text-gray-700 dark:text-gray-200 hover:bg-peach/20 dark:hover:bg-peach/20',
-                  'transition-all duration-300',
-                  'hover:scale-[1.02]',
-                )"
-              >
-                <UserIcon class="w-4 h-4" />
-                <span>Account</span>
-              </router-link>
-
-              <!-- Admin Dashboard Link -->
-              <router-link
-                v-if="isAdmin"
-                to="/admin"
-                @click="isAccountDropdownOpen = false"
-                :class="cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
-                  'text-gray-700 dark:text-gray-200 hover:bg-lavender/20 dark:hover:bg-lavender/20',
-                  'transition-all duration-300',
-                  'hover:scale-[1.02]',
-                )"
-              >
-                <component :is="ShieldCheckIcon" class="w-4 h-4" />
-                <span>Admin Dashboard</span>
-              </router-link>
-
-              <!-- Logout -->
-              <button
-                @click="handleLogout"
-                :class="cn(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm',
-                  'text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30',
-                  'transition-all duration-300',
-                  'hover:scale-[1.02]',
-                )"
-              >
-                <ArrowRightOnRectangleIcon class="w-4 h-4" />
-                <span>Logout</span>
-              </button>
             </div>
-          </div>
+          </Transition>
         </div>
       </div>
 
       <!-- Mobile Menu Button -->
       <button
         @click="toggleNav"
-        class="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-gray-700/50 transition-all duration-300 transform-gpu hover:scale-110 active:scale-95"
+        class="md:hidden p-2 rounded-xl text-charcoal-300 hover:text-charcoal-500 dark:text-cream-100/80 dark:hover:text-cream-100 hover:bg-ochre-500/10 transition-all duration-300 transform-gpu hover:scale-110 active:scale-95"
+        aria-label="Toggle navigation"
       >
-        <Bars3Icon
-          v-if="!isOpen"
-          class="w-6 h-6 transition-transform duration-300"
-          :class="{ 'rotate-90': isOpen }"
-        />
-        <XMarkIcon v-else class="w-6 h-6 transition-transform duration-300 rotate-90" />
+        <Bars3Icon v-if="!isOpen" class="w-6 h-6" />
+        <XMarkIcon v-else class="w-6 h-6" />
       </button>
     </div>
 
@@ -406,12 +390,12 @@ onUnmounted(() => {
     <div
       ref="backdropRef"
       v-if="isOpen"
-      class="fixed inset-0 bg-white/60 dark:bg-gray-950/80 backdrop-blur-xl z-40 md:hidden transition-opacity duration-300"
+      class="fixed inset-0 bg-cream-100/70 dark:bg-charcoal-600/80 backdrop-blur-xl z-40 md:hidden"
       @click="toggleNav"
     />
     <div
       ref="navRef"
-      class="fixed top-0 left-0 h-full w-72 z-50 bg-cream/95 dark:bg-gray-900/98 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 shadow-xl p-8 md:hidden transform-gpu"
+      class="fixed top-0 left-0 h-full w-72 z-50 glass border-r border-charcoal-500/10 dark:border-cream-100/10 p-8 md:hidden transform-gpu"
       :style="!isOpen ? { transform: 'translateX(-100%)' } : undefined"
     >
       <div class="flex flex-col gap-2 mt-16">
@@ -422,29 +406,27 @@ onUnmounted(() => {
           @click="navigate(item.path)"
           :class="
             cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
+              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
               'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
+              'hover:scale-[1.03] active:scale-[0.97]',
               isActive(item.path)
-                ? 'bg-peach/20 text-gray-800 dark:text-gray-200 scale-105'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white/40 dark:hover:bg-gray-700/40',
+                ? 'bg-ochre-500/15 ring-1 ring-ochre-500/30 text-charcoal-500 dark:text-cream-100'
+                : 'text-charcoal-300 hover:text-charcoal-500 hover:bg-ochre-500/10 dark:text-cream-100/80 dark:hover:text-cream-100',
             )
           "
         >
-          <component :is="item.icon" class="w-5 h-5 transition-transform duration-300" />
+          <component :is="item.icon" class="w-5 h-5" />
           <span>{{ item.name }}</span>
         </router-link>
 
-        <!-- Mobile Theme Toggle -->
         <button
           @click="toggleTheme()"
           :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
           :class="cn(
-            'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
-            'transition-all duration-300 transform-gpu',
-            'hover:scale-105 active:scale-95',
-            'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200',
-            'hover:bg-white/40 dark:hover:bg-gray-700/40',
+            'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
+            'text-charcoal-300 hover:text-charcoal-500 hover:bg-ochre-500/10',
+            'dark:text-cream-100/80 dark:hover:text-cream-100',
+            'transition-all duration-300 transform-gpu hover:scale-[1.03] active:scale-[0.97]',
           )"
         >
           <SunIcon v-if="themeMode === 'dark'" class="w-5 h-5" />
@@ -452,17 +434,11 @@ onUnmounted(() => {
           <span>{{ themeMode === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
         </button>
 
-        <!-- Mobile Auth Section -->
-        <div v-if="!isAuthenticated" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+        <div v-if="!isAuthenticated" class="flex flex-col gap-2 mt-4 pt-4 border-t border-charcoal-500/10 dark:border-cream-100/10">
           <router-link
             :to="{ path: '/login', query: { redirect: route.fullPath } }"
             @click="closeNav"
-            :class="cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
-              'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
-              'text-gray-600 hover:text-gray-800 hover:bg-white/40',
-            )"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-charcoal-300 hover:text-charcoal-500 hover:bg-ochre-500/10 dark:text-cream-100/80 dark:hover:text-cream-100 transition-all duration-300 transform-gpu hover:scale-[1.03] active:scale-[0.97]"
           >
             <UserIcon class="w-5 h-5" />
             <span>Sign In</span>
@@ -470,34 +446,27 @@ onUnmounted(() => {
           <router-link
             :to="{ path: '/signup', query: { redirect: route.fullPath } }"
             @click="closeNav"
-            :class="cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
-              'bg-peach/30 text-gray-800',
-              'hover:bg-peach/40 transition-all duration-300',
-              'transform-gpu hover:scale-105 active:scale-95',
-            )"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-cream-100 bg-gradient-to-br from-ochre-500 to-terracotta-500 shadow-edge-ochre transition-all duration-300 transform-gpu hover:scale-[1.03] active:scale-[0.97]"
           >
             <UserIcon class="w-5 h-5" />
             <span>Sign Up</span>
           </router-link>
         </div>
 
-        <!-- Mobile Account Section -->
-        <div v-else class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+        <div v-else class="flex flex-col gap-2 mt-4 pt-4 border-t border-charcoal-500/10 dark:border-cream-100/10">
           <div class="px-4 py-2 mb-2">
-            <p class="text-sm font-medium text-gray-800">{{ user?.name }}</p>
-            <p class="text-xs text-gray-500">{{ user?.email }}</p>
+            <p class="text-sm font-medium text-charcoal-500 dark:text-cream-100">{{ user?.name }}</p>
+            <p class="text-xs text-charcoal-200 dark:text-cream-300/70">{{ user?.email }}</p>
           </div>
           <router-link
             to="/account"
             @click="navigate('/account')"
             :class="cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
-              'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
+              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
+              'transition-all duration-300 transform-gpu hover:scale-[1.03] active:scale-[0.97]',
               isActive('/account')
-                ? 'bg-peach/20 text-gray-800 scale-105'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+                ? 'bg-ochre-500/15 ring-1 ring-ochre-500/30 text-charcoal-500 dark:text-cream-100'
+                : 'text-charcoal-300 hover:text-charcoal-500 hover:bg-ochre-500/10 dark:text-cream-100/80 dark:hover:text-cream-100',
             )"
           >
             <UserIcon class="w-5 h-5" />
@@ -508,12 +477,11 @@ onUnmounted(() => {
             to="/admin"
             @click="navigate('/admin')"
             :class="cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
-              'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
+              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
+              'transition-all duration-300 transform-gpu hover:scale-[1.03] active:scale-[0.97]',
               isActive('/admin')
-                ? 'bg-lavender/20 text-gray-800 scale-105'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-white/40',
+                ? 'bg-terracotta-500/15 ring-1 ring-terracotta-500/30 text-charcoal-500 dark:text-cream-100'
+                : 'text-charcoal-300 hover:text-charcoal-500 hover:bg-terracotta-500/10 dark:text-cream-100/80 dark:hover:text-cream-100',
             )"
           >
             <ShieldCheckIcon class="w-5 h-5" />
@@ -521,12 +489,7 @@ onUnmounted(() => {
           </router-link>
           <button
             @click="handleLogout"
-            :class="cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-normal',
-              'text-red-700 hover:bg-red-50',
-              'transition-all duration-300 transform-gpu',
-              'hover:scale-105 active:scale-95',
-            )"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-terracotta-500 hover:bg-terracotta-500/10 transition-all duration-300 transform-gpu hover:scale-[1.03] active:scale-[0.97]"
           >
             <ArrowRightOnRectangleIcon class="w-5 h-5" />
             <span>Logout</span>

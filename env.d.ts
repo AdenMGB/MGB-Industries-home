@@ -9,10 +9,3 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
-declare module '@tresjs/core' {
-  export * from '@tresjs/core'
-}
-
-declare module '@tresjs/cientos' {
-  export * from '@tresjs/cientos'
-}

@@ -17,6 +17,7 @@ import GitEmbedSection from '@/components/GitEmbedSection.vue'
 import GitShareLink from '@/components/GitShareLink.vue'
 import { gitApi } from '@/api/git'
 import { parseGitUrl } from '@/utils/git-url'
+import { queryFirstString } from '@/utils/route-query'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
@@ -69,7 +70,10 @@ function syncUrl() {
 
 watch([repoUrl, branch, author, since, until, filePath, baseBranch, headBranch, activeTab], syncUrl, { deep: true })
 watch(() => route.query.tab, (t) => { if (t && tabs.some(x => x.id === t)) activeTab.value = t as TabId })
-watch(() => route.query.url, (u) => { if (u) repoUrl.value = u })
+watch(() => route.query.url, (u) => {
+  const s = queryFirstString(u)
+  if (s) repoUrl.value = s
+})
 
 // Shared helpers
 function openCommitDetails(c: Record<string, unknown>) {

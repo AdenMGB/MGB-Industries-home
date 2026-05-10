@@ -1,24 +1,23 @@
 /**
- * SEO configuration - used for meta tags, structured data, and sitemap
+ * SEO configuration - used for meta tags, structured data, and sitemap.
  */
 export const SITE_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL) || 'https://adenmgb.com'
 
 export const SITE_NAME = 'AdenMGB'
-export const SITE_DEFAULT_TITLE =
-  'AdenMGB | Open Source Developer & Creative Technologist Portfolio'
+export const SITE_DEFAULT_TITLE = 'AdenMGB | Carefully crafted developer utilities'
 export const SITE_DEFAULT_DESCRIPTION =
-  'Portfolio of AdenMGB - Open source developer, creative technologist. Projects, games, and contact.'
+  'AdenMGB — open source developer & a quiet shop of carefully crafted developer utilities. Free, ad-free, mostly browser-side.'
 /** Add public/og-image.png (1200x630) for social sharing - falls back to this URL */
 export const SITE_DEFAULT_IMAGE = `${SITE_URL}/og-image.png`
 
-/** Person schema for JSON-LD - update with your details */
+/** Person schema for JSON-LD */
 export const PERSON_SCHEMA = {
   '@type': 'Person',
   name: 'Aden',
   url: SITE_URL,
   email: 'aden@adenmgb.com',
-  jobTitle: 'Open Source Developer & Creative Technologist',
+  jobTitle: 'Open Source Developer',
   description: SITE_DEFAULT_DESCRIPTION,
   sameAs: [
     'https://github.com/AdenMGB',
@@ -39,7 +38,7 @@ export const WEBSITE_SCHEMA = {
     '@type': 'SearchAction',
     target: {
       '@type': 'EntryPoint',
-      urlTemplate: `${SITE_URL}/games?q={search_term_string}`,
+      urlTemplate: `${SITE_URL}/developer-tools?q={search_term_string}`,
     },
     'query-input': 'required name=search_term_string',
   },

@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { api } from '../api/client'
-import type { UserWithoutPassword } from '../../server/types/index.js'
+import type { UserWithoutPassword } from '../../server/types/user.js'
 import { getCookie, setCookie, removeCookie } from '@/utils/cookies'
 
 const user = ref<UserWithoutPassword | null>(null)

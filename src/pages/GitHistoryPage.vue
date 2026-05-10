@@ -9,6 +9,7 @@ import GitBranchSelect from '@/components/GitBranchSelect.vue'
 import GitEmbedSection from '@/components/GitEmbedSection.vue'
 import GitShareLink from '@/components/GitShareLink.vue'
 import { gitApi } from '@/api/git'
+import { queryFirstString } from '@/utils/route-query'
 
 const router = useRouter()
 const route = useRoute()
@@ -117,11 +118,17 @@ const goBack = () => window.history.back()
 
 watch(
   () => route.query.url,
-  (url) => { if (url) repoUrl.value = url },
+  (url) => {
+    const s = queryFirstString(url)
+    if (s) repoUrl.value = s
+  },
 )
 watch(
   () => route.query.sha,
-  (sha) => { if (sha) branch.value = sha },
+  (sha) => {
+    const s = queryFirstString(sha)
+    if (s) branch.value = s
+  },
 )
 
 function syncUrl() {

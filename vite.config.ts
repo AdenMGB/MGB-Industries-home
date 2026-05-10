@@ -3,16 +3,10 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { templateCompilerOptions } from '@tresjs/core'
 
 // https://vite.dev/config/
 export default defineConfig(async () => {
-  const plugins: any[] = [
-    vue({
-      ...templateCompilerOptions,
-    }),
-    vueDevTools(),
-  ]
+  const plugins: any[] = [vue(), vueDevTools()]
 
   // Only add server plugin in development (not during production build)
   // Check if we're in dev mode and the file exists
@@ -34,7 +28,7 @@ export default defineConfig(async () => {
       },
     },
     optimizeDeps: {
-      include: ['three', '@tresjs/core'],
+      include: ['three'],
     },
     server: {
       proxy: {

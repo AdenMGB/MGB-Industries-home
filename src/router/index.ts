@@ -13,44 +13,9 @@ const routes: RouteRecordRaw[] = [
       transition: 'slide-up',
       seo: {
         title: 'AdenMGB',
-        description: 'Open source developer & creative technologist. Portfolio of projects, games, and contact.',
+        description:
+          'Open source developer & a quiet shop of carefully crafted developer utilities.',
         canonical: SITE_URL + '/',
-      },
-    },
-  },
-  {
-    path: '/projects',
-    name: 'Projects',
-    component: () => import('@/pages/ProjectsPage.vue'),
-    meta: {
-      transition: 'morph',
-      seo: {
-        title: 'Projects',
-        description: 'Open source projects and creative technology work by AdenMGB.',
-      },
-    },
-  },
-  {
-    path: '/about',
-    name: 'About',
-    component: () => import('@/pages/AboutPage.vue'),
-    meta: {
-      transition: 'flip',
-      seo: {
-        title: 'About',
-        description: 'About AdenMGB - Open source developer, creative technologist. Timeline and background.',
-      },
-    },
-  },
-  {
-    path: '/contact',
-    name: 'Contact',
-    component: () => import('@/pages/ContactPage.vue'),
-    meta: {
-      transition: 'zoom',
-      seo: {
-        title: 'Contact',
-        description: 'Get in touch with AdenMGB. Send a message or reach out via email.',
       },
     },
   },
@@ -61,7 +26,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       transition: 'slide-up',
       seo: {
-        title: 'Developer Tools',
+        title: 'Utilities',
         description: 'Developer utilities: Base64, JSON, URL, UUID, timestamps, and more.',
       },
     },
@@ -110,7 +75,8 @@ const routes: RouteRecordRaw[] = [
       transition: 'slide-up',
       seo: {
         title: 'Conversion Trainer',
-        description: 'Practice binary and hexadecimal conversion with calculator, reference table, and quiz games.',
+        description:
+          'Practice binary and hexadecimal conversion with calculator, reference table, and quiz games.',
       },
     },
   },
@@ -146,7 +112,8 @@ const routes: RouteRecordRaw[] = [
       transition: 'slide-up',
       seo: {
         title: 'Tournament',
-        description: 'Join a conversion trainer tournament. Up to 10,000 players in configurable brackets.',
+        description:
+          'Join a conversion trainer tournament. Up to 10,000 players in configurable brackets.',
       },
     },
   },
@@ -326,7 +293,8 @@ const routes: RouteRecordRaw[] = [
       transition: 'slide-up',
       seo: {
         title: 'Git Tools',
-        description: 'History, stats, search, file history, and branch compare for any public GitHub or GitLab repo.',
+        description:
+          'History, stats, search, file history, and branch compare for any public GitHub or GitLab repo.',
       },
     },
   },
@@ -344,7 +312,10 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/developer-tools/git-file-history',
-    redirect: (to) => ({ path: '/developer-tools/git', query: { ...to.query, tab: 'file-history' } }),
+    redirect: (to) => ({
+      path: '/developer-tools/git',
+      query: { ...to.query, tab: 'file-history' },
+    }),
   },
   {
     path: '/developer-tools/git-compare',
@@ -359,31 +330,6 @@ const routes: RouteRecordRaw[] = [
       seo: {
         title: 'Git Commit',
         description: 'View commit details and file diff.',
-      },
-    },
-  },
-  {
-    path: '/games',
-    name: 'Games',
-    component: () => import('@/pages/GamesPage.vue'),
-    meta: {
-      transition: 'slide-up',
-      seo: {
-        title: 'Games',
-        description: 'Play browser games and offline HTML games. Save progress and favorite games.',
-      },
-    },
-  },
-  {
-    path: '/games/:id',
-    name: 'Game',
-    component: () => import('@/pages/GamePage.vue'),
-    meta: {
-      transition: 'zoom',
-      seo: {
-        title: 'Game',
-        description: 'Play browser games. Save progress and favorite games.',
-        // Game page overrides with dynamic title/description in component
       },
     },
   },
@@ -414,7 +360,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       transition: 'slide-up',
       requiresAuth: true,
-      seo: { title: 'Account', description: 'Manage your account settings.', noIndex: true },
+      seo: { title: 'Account', description: 'Manage your account.', noIndex: true },
     },
   },
   {
@@ -438,6 +384,12 @@ const routes: RouteRecordRaw[] = [
       seo: { title: 'Reset Password', description: 'Reset your password.', noIndex: true },
     },
   },
+  // Legacy redirects for removed marketing pages
+  { path: '/projects', redirect: '/' },
+  { path: '/about', redirect: '/' },
+  { path: '/contact', redirect: '/' },
+  { path: '/games', redirect: '/developer-tools' },
+  { path: '/games/:id', redirect: '/developer-tools' },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
@@ -461,7 +413,6 @@ const router = createRouter({
   },
 })
 
-// Apply SEO meta on every navigation
 router.afterEach((to) => {
   if (typeof document === 'undefined') return
   const seo = to.meta?.seo as Record<string, unknown> | undefined
@@ -470,26 +421,21 @@ router.afterEach((to) => {
 })
 
 router.beforeEach((to, from, next) => {
-  // Check token synchronously (non-blocking)
   const hasToken = !!getCookie('auth_token')
 
-  // Start auth check in background (completely non-blocking)
   if (hasToken) {
-    // Defer to next tick to avoid blocking
     Promise.resolve().then(() => {
       import('@/composables/useAuth').then(({ useAuth }) => {
         const { checkAuth } = useAuth()
         checkAuth().catch(() => {
-          // Silently handle errors
+          /* silently handle errors */
         })
       })
     })
   }
 
-  // Public routes - allow immediately
   if (to.meta.public) {
     next()
-    // Redirect if authenticated (non-blocking, after navigation)
     if (hasToken) {
       Promise.resolve().then(() => {
         import('@/composables/useAuth').then(({ useAuth }) => {
@@ -505,18 +451,15 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // Protected routes - check token only
   if (to.meta.requiresAuth) {
     if (!hasToken) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
       return
     }
-    // Has token - allow navigation, component will verify
     next()
     return
   }
 
-  // No auth requirements
   next()
 })
 

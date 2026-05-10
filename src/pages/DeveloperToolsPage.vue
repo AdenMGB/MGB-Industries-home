@@ -17,8 +17,9 @@ import {
   MagnifyingGlassIcon,
   SwatchIcon,
   UserGroupIcon,
+  ArrowRightIcon,
 } from '@heroicons/vue/24/outline'
-import { ChevronRightIcon, TrophyIcon as TrophyIconSolid } from '@heroicons/vue/24/solid'
+import { TrophyIcon as TrophyIconSolid } from '@heroicons/vue/24/solid'
 import { CONVERSION_TRAINER_ACHIEVEMENTS } from '@/config/conversionTrainerAchievements'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
@@ -27,71 +28,259 @@ const { isAuthenticated } = useAuth()
 const conversionAchievements = ref<Set<string>>(new Set())
 const conversionAchievementCount = computed(() => conversionAchievements.value.size)
 
-const categories = [
+type Accent = 'ochre' | 'terracotta' | 'eucalyptus'
+
+interface Tool {
+  name: string
+  description: string
+  path: string
+  icon: typeof CommandLineIcon
+  accent: Accent
+}
+
+interface Category {
+  id: string
+  title: string
+  blurb: string
+  tools: Tool[]
+}
+
+import { CommandLineIcon } from '@heroicons/vue/24/outline'
+
+const categories: Category[] = [
   {
     id: 'learn-practice',
     title: 'Learn & Practice',
+    blurb: 'Build mental models the slow, satisfying way.',
     tools: [
-      { name: 'Conversion Trainer', description: 'Practice mental binary and hex conversion with calculator, reference table, and quiz games.', path: '/developer-tools/conversion-trainer', icon: AcademicCapIcon, accent: 'mint' },
-      { name: 'Conversion Trainer Multiplayer', description: 'Play conversion trainer with friends. Real-time 1v1 or up to 32 players with shareable links.', path: '/developer-tools/conversion-trainer/multiplayer', icon: UserGroupIcon, accent: 'lavender' },
+      {
+        name: 'Conversion Trainer',
+        description:
+          'Practice mental binary and hex conversion with calculator, reference table, and quiz games.',
+        path: '/developer-tools/conversion-trainer',
+        icon: AcademicCapIcon,
+        accent: 'ochre',
+      },
+      {
+        name: 'Conversion Trainer · Multiplayer',
+        description:
+          'Real-time 1v1 or up to 32 players with shareable links. Tournament mode goes to 10,000.',
+        path: '/developer-tools/conversion-trainer/multiplayer',
+        icon: UserGroupIcon,
+        accent: 'terracotta',
+      },
     ],
   },
   {
     id: 'converters',
     title: 'Converters',
+    blurb: 'Numbers, addresses, encodings — translated cleanly.',
     tools: [
-      { name: 'IPv4 ↔ Binary', description: 'Convert between IPv4 addresses and binary notation.', path: '/developer-tools/ipv4-to-binary', icon: ArrowPathIcon, accent: 'peach' },
-      { name: 'IPv6 ↔ Hexadecimal', description: 'Convert between IPv6 addresses and hexadecimal.', path: '/developer-tools/ipv6-to-hex', icon: ArrowPathIcon, accent: 'lavender' },
-      { name: 'Number ↔ Binary', description: 'Convert between decimal and binary notation.', path: '/developer-tools/number-to-binary', icon: ArrowPathIcon, accent: 'peach' },
-      { name: 'Number to Hex & Decimal', description: 'Convert numbers between decimal, hex, octal, and binary.', path: '/developer-tools/number-to-hex', icon: ArrowPathIcon, accent: 'lavender' },
-      { name: 'Base64 Encode/Decode', description: 'Encode and decode text or files to Base64.', path: '/developer-tools/base64', icon: DocumentDuplicateIcon, accent: 'mint' },
-      { name: 'URL Encode/Decode', description: 'Encode and decode URL parameters.', path: '/developer-tools/url-encode', icon: LinkIcon, accent: 'soft-blue' },
-      { name: 'HTML Encode/Decode', description: 'Escape and unescape HTML entities.', path: '/developer-tools/html-encode', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
-      { name: 'Color Converter', description: 'Convert colors between hex, RGB, and HSL.', path: '/developer-tools/color-converter', icon: SwatchIcon, accent: 'coral' },
+      {
+        name: 'IPv4 ↔ Binary',
+        description: 'Convert between IPv4 addresses and binary notation.',
+        path: '/developer-tools/ipv4-to-binary',
+        icon: ArrowPathIcon,
+        accent: 'ochre',
+      },
+      {
+        name: 'IPv6 ↔ Hexadecimal',
+        description: 'Convert between IPv6 addresses and hexadecimal.',
+        path: '/developer-tools/ipv6-to-hex',
+        icon: ArrowPathIcon,
+        accent: 'terracotta',
+      },
+      {
+        name: 'Number ↔ Binary',
+        description: 'Convert between decimal and binary notation.',
+        path: '/developer-tools/number-to-binary',
+        icon: ArrowPathIcon,
+        accent: 'ochre',
+      },
+      {
+        name: 'Number to Hex & Decimal',
+        description: 'Convert numbers between decimal, hex, octal, and binary.',
+        path: '/developer-tools/number-to-hex',
+        icon: ArrowPathIcon,
+        accent: 'terracotta',
+      },
+      {
+        name: 'Base64 Encode/Decode',
+        description: 'Encode and decode text or files to Base64.',
+        path: '/developer-tools/base64',
+        icon: DocumentDuplicateIcon,
+        accent: 'eucalyptus',
+      },
+      {
+        name: 'URL Encode/Decode',
+        description: 'Encode and decode URL parameters.',
+        path: '/developer-tools/url-encode',
+        icon: LinkIcon,
+        accent: 'ochre',
+      },
+      {
+        name: 'HTML Encode/Decode',
+        description: 'Escape and unescape HTML entities.',
+        path: '/developer-tools/html-encode',
+        icon: CodeBracketSquareIcon,
+        accent: 'eucalyptus',
+      },
+      {
+        name: 'Color Converter',
+        description: 'Convert colors between hex, RGB, and HSL.',
+        path: '/developer-tools/color-converter',
+        icon: SwatchIcon,
+        accent: 'terracotta',
+      },
     ],
   },
   {
     id: 'formatters',
     title: 'Formatters',
+    blurb: 'Make a mess of text presentable.',
     tools: [
-      { name: 'JSON Formatter', description: 'Pretty print, minify, and validate JSON.', path: '/developer-tools/json-formatter', icon: CodeBracketSquareIcon, accent: 'soft-yellow' },
-      { name: 'Case Converter', description: 'Convert between camelCase, snake_case, kebab-case, and more.', path: '/developer-tools/case-converter', icon: ArrowsRightLeftIcon, accent: 'warm-pink' },
+      {
+        name: 'JSON Formatter',
+        description: 'Pretty print, minify, and validate JSON.',
+        path: '/developer-tools/json-formatter',
+        icon: CodeBracketSquareIcon,
+        accent: 'eucalyptus',
+      },
+      {
+        name: 'Case Converter',
+        description: 'camelCase, snake_case, kebab-case, and more — translated.',
+        path: '/developer-tools/case-converter',
+        icon: ArrowsRightLeftIcon,
+        accent: 'ochre',
+      },
     ],
   },
   {
     id: 'generators',
     title: 'Generators',
+    blurb: 'Create things from nothing.',
     tools: [
-      { name: 'UUID Generator', description: 'Generate random UUIDs (v4).', path: '/developer-tools/uuid-generator', icon: HashtagIcon, accent: 'warm-pink' },
-      { name: 'Hash Generator', description: 'Generate MD5, SHA-1, SHA-256, SHA-384, SHA-512 hashes.', path: '/developer-tools/hash-generator', icon: ArrowPathIcon, accent: 'coral' },
+      {
+        name: 'UUID Generator',
+        description: 'Generate random UUIDs (v4).',
+        path: '/developer-tools/uuid-generator',
+        icon: HashtagIcon,
+        accent: 'terracotta',
+      },
+      {
+        name: 'Hash Generator',
+        description: 'Generate MD5, SHA-1, SHA-256, SHA-384, SHA-512 hashes.',
+        path: '/developer-tools/hash-generator',
+        icon: ArrowPathIcon,
+        accent: 'ochre',
+      },
     ],
   },
   {
     id: 'git',
     title: 'Git',
+    blurb: 'Inspect any public repository on GitHub or GitLab.',
     tools: [
-      { name: 'Git Tools', description: 'History, stats, search, file history, and branch compare for any public GitHub or GitLab repo.', path: '/developer-tools/git', icon: CodeBracketSquareIcon, accent: 'soft-blue' },
+      {
+        name: 'Git Tools',
+        description:
+          'History, stats, search, file history, and branch compare for any public repo.',
+        path: '/developer-tools/git',
+        icon: CodeBracketSquareIcon,
+        accent: 'eucalyptus',
+      },
     ],
   },
   {
     id: 'utilities',
     title: 'Utilities',
+    blurb: 'The rest of the toolbox.',
     tools: [
-      { name: 'Unix Timestamp', description: 'Convert between Unix timestamp and human-readable date.', path: '/developer-tools/unix-timestamp', icon: ClockIcon, accent: 'peach' },
-      { name: 'JWT Decoder', description: 'Decode and inspect JWT tokens.', path: '/developer-tools/jwt-decoder', icon: CodeBracketSquareIcon, accent: 'soft-yellow' },
-      { name: 'Regex Tester', description: 'Test regular expressions with matches and replace.', path: '/developer-tools/regex-tester', icon: MagnifyingGlassIcon, accent: 'lavender' },
-      { name: 'Diff Checker', description: 'Compare two texts and see the differences.', path: '/developer-tools/diff-checker', icon: ArrowsRightLeftIcon, accent: 'mint' },
+      {
+        name: 'Unix Timestamp',
+        description: 'Convert between Unix timestamp and human-readable date.',
+        path: '/developer-tools/unix-timestamp',
+        icon: ClockIcon,
+        accent: 'ochre',
+      },
+      {
+        name: 'JWT Decoder',
+        description: 'Decode and inspect JWT tokens.',
+        path: '/developer-tools/jwt-decoder',
+        icon: CodeBracketSquareIcon,
+        accent: 'eucalyptus',
+      },
+      {
+        name: 'Regex Tester',
+        description: 'Test regular expressions with matches and replace.',
+        path: '/developer-tools/regex-tester',
+        icon: MagnifyingGlassIcon,
+        accent: 'terracotta',
+      },
+      {
+        name: 'Diff Checker',
+        description: 'Compare two texts and see the differences.',
+        path: '/developer-tools/diff-checker',
+        icon: ArrowsRightLeftIcon,
+        accent: 'ochre',
+      },
     ],
   },
 ]
 
-const openTool = (path: string) => {
-  router.push(path)
-}
+const accentIconBg = (accent: Accent) =>
+  ({
+    ochre: 'bg-ochre-500/15 text-ochre-500',
+    terracotta: 'bg-terracotta-500/15 text-terracotta-500',
+    eucalyptus: 'bg-eucalyptus-400/20 text-eucalyptus-500',
+  })[accent]
+
+const accentRing = (accent: Accent) =>
+  ({
+    ochre:
+      'group-hover:shadow-[0_0_0_1px_rgba(204,123,60,0.4),0_24px_60px_-26px_rgba(204,123,60,0.4)]',
+    terracotta:
+      'group-hover:shadow-[0_0_0_1px_rgba(140,58,53,0.4),0_24px_60px_-26px_rgba(140,58,53,0.4)]',
+    eucalyptus:
+      'group-hover:shadow-[0_0_0_1px_rgba(92,122,104,0.4),0_24px_60px_-26px_rgba(92,122,104,0.4)]',
+  })[accent]
+
+const totalTools = computed(() => categories.reduce((acc, c) => acc + c.tools.length, 0))
+
+const openTool = (path: string) => router.push(path)
 
 onMounted(async () => {
-  gsap.fromTo('.page-header', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: premiumEase })
-  gsap.fromTo('.tool-card', { opacity: 0, y: 30, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.1, delay: 0.1, ease: premiumEase })
+  gsap.fromTo(
+    '.dt-header',
+    { opacity: 0, y: 30, scale: 0.97 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: premiumEase },
+  )
+  gsap.fromTo(
+    '.dt-category-header',
+    { opacity: 0, y: 16 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      stagger: 0.05,
+      ease: premiumEase,
+      delay: 0.1,
+    },
+  )
+  gsap.fromTo(
+    '.dt-tool',
+    { opacity: 0, y: 22, scale: 0.97 },
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.45,
+      stagger: 0.04,
+      ease: premiumEase,
+      delay: 0.15,
+    },
+  )
+
   if (isAuthenticated.value) {
     try {
       const res = await api.getConversionAchievements()
@@ -106,79 +295,115 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen py-24 px-4 md:px-8">
-    <div class="max-w-4xl mx-auto">
+  <div class="min-h-screen pt-32 pb-24 px-4 md:px-8">
+    <div class="max-w-6xl mx-auto">
       <!-- Header -->
-      <div class="page-header mb-12">
-        <h1 class="text-5xl md:text-7xl font-light mb-4 tracking-tight text-gray-800 dark:text-white">
-          Developer Tools
-        </h1>
-        <p class="text-base text-gray-600 dark:text-gray-400">
-          Handy converters and utilities for network developers.
+      <header class="dt-header mb-14 md:mb-20">
+        <p class="font-mono text-xs uppercase tracking-[0.32em] text-ochre-500/90 mb-3">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-ochre-500 align-middle mr-2" />
+          Utilities · {{ totalTools }} tools
         </p>
-      </div>
+        <h1
+          class="font-display text-balance text-5xl md:text-7xl tracking-tight leading-[0.95] text-charcoal-500 dark:text-cream-100 max-w-4xl"
+        >
+          The toolkit.
+          <span class="italic text-terracotta-500 dark:text-ochre-300">Free, ad-free, always.</span>
+        </h1>
+        <p class="mt-5 max-w-2xl text-base md:text-lg text-charcoal-300 dark:text-cream-100/70 leading-relaxed">
+          A small collection of developer tools, kept honest. Most run entirely
+          in your browser. None require an account.
+        </p>
+      </header>
 
-      <!-- Tools List -->
-      <div class="space-y-10">
-        <section v-for="category in categories" :key="category.id">
-          <h2 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">{{ category.title }}</h2>
-          <div class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      <div class="space-y-16 md:space-y-20">
+        <section v-for="(category, ci) in categories" :key="category.id" class="dt-category">
+          <div class="dt-category-header mb-6 md:mb-8 flex items-end justify-between gap-6">
+            <div>
+              <p class="font-mono text-[10px] uppercase tracking-[0.32em] text-charcoal-200 dark:text-cream-100/45 mb-2">
+                {{ String(ci + 1).padStart(2, '0') }} · {{ category.tools.length }} tools
+              </p>
+              <h2
+                class="font-display text-3xl md:text-4xl tracking-tight text-charcoal-500 dark:text-cream-100"
+              >
+                {{ category.title }}
+              </h2>
+              <p class="mt-1 text-sm md:text-base text-charcoal-300 dark:text-cream-100/65">
+                {{ category.blurb }}
+              </p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:gap-5 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             <button
               v-for="tool in category.tools"
               :key="tool.path"
-              class="tool-card group text-left"
               @click="openTool(tool.path)"
-              :class="cn(
-                'p-6 rounded-xl backdrop-blur-md border',
-                'bg-white/40 dark:bg-gray-800/40 border-gray-200/50 dark:border-gray-700/50',
-                'hover:bg-white/60 dark:hover:bg-gray-700/60',
-                'transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]',
-                'focus:outline-none focus:ring-2 focus:ring-offset-2',
-                tool.accent === 'peach' && 'focus:ring-peach/50 hover:border-peach/30',
-                tool.accent === 'lavender' && 'focus:ring-lavender/50 hover:border-lavender/30',
-                tool.accent === 'mint' && 'focus:ring-mint/50 hover:border-mint/30',
-                tool.accent === 'soft-yellow' && 'focus:ring-soft-yellow/50 hover:border-soft-yellow/30',
-                tool.accent === 'soft-blue' && 'focus:ring-soft-blue/50 hover:border-soft-blue/30',
-                tool.accent === 'warm-pink' && 'focus:ring-warm-pink/50 hover:border-warm-pink/30',
-                tool.accent === 'coral' && 'focus:ring-coral/50 hover:border-coral/30',
-              )"
+              data-cursor="magnetic"
+              :class="
+                cn(
+                  'dt-tool group relative overflow-hidden text-left',
+                  'rounded-2xl p-5',
+                  'glass glass-edge',
+                  'transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  'hover:scale-[1.015] hover:-translate-y-0.5',
+                  accentRing(tool.accent),
+                )
+              "
             >
-              <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-4">
+                <span
+                  :class="
+                    cn(
+                      'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-500 group-hover:rotate-[-6deg] group-hover:scale-105',
+                      accentIconBg(tool.accent),
+                    )
+                  "
+                >
+                  <component :is="tool.icon" class="w-5 h-5" />
+                </span>
+
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-2">
-                    <component
-                      :is="tool.icon"
-                      :class="cn(
-                        'w-5 h-5 shrink-0',
-                        tool.accent === 'peach' && 'text-peach',
-                        tool.accent === 'lavender' && 'text-lavender',
-                        tool.accent === 'mint' && 'text-mint',
-                        tool.accent === 'soft-yellow' && 'text-soft-yellow',
-                        tool.accent === 'soft-blue' && 'text-soft-blue',
-                        tool.accent === 'warm-pink' && 'text-warm-pink',
-                        tool.accent === 'coral' && 'text-coral',
-                      )"
-                    />
-                    <h3 class="text-lg font-light text-gray-800 dark:text-white">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3
+                      class="font-display text-xl tracking-tight text-charcoal-500 dark:text-cream-100 leading-snug"
+                    >
                       {{ tool.name }}
                     </h3>
                     <span
-                      v-if="tool.path === '/developer-tools/conversion-trainer' && isAuthenticated"
-                      class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-xs font-medium"
+                      v-if="
+                        tool.path === '/developer-tools/conversion-trainer' && isAuthenticated
+                      "
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-ochre-500/15 text-ochre-500 text-[10px] font-mono uppercase tracking-widest"
                       :title="`${conversionAchievementCount}/${Object.keys(CONVERSION_TRAINER_ACHIEVEMENTS).length} achievements`"
                     >
-                      <TrophyIconSolid class="w-3.5 h-3.5" />
-                      {{ conversionAchievementCount }}/{{ Object.keys(CONVERSION_TRAINER_ACHIEVEMENTS).length }}
+                      <TrophyIconSolid class="w-3 h-3" />
+                      {{ conversionAchievementCount }}/{{
+                        Object.keys(CONVERSION_TRAINER_ACHIEVEMENTS).length
+                      }}
                     </span>
                   </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                  <p class="mt-1.5 text-sm text-charcoal-300 dark:text-cream-100/65 leading-relaxed">
                     {{ tool.description }}
                   </p>
                 </div>
-                <ChevronRightIcon
-                  class="w-5 h-5 shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-200"
+
+                <ArrowRightIcon
+                  class="w-4 h-4 mt-1 shrink-0 text-charcoal-200 dark:text-cream-100/40 group-hover:text-ochre-500 group-hover:translate-x-0.5 transition-all duration-300"
                 />
               </div>
+
+              <!-- Edge glow corner -->
+              <div
+                aria-hidden="true"
+                :class="
+                  cn(
+                    'pointer-events-none absolute -bottom-12 -right-12 h-32 w-32 rounded-full blur-2xl opacity-0 group-hover:opacity-[0.18] transition-opacity duration-500',
+                    tool.accent === 'ochre' && 'bg-ochre-500',
+                    tool.accent === 'terracotta' && 'bg-terracotta-500',
+                    tool.accent === 'eucalyptus' && 'bg-eucalyptus-400',
+                  )
+                "
+              />
             </button>
           </div>
         </section>
@@ -186,9 +411,3 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.tool-card {
-  transform-origin: center center;
-}
-</style>

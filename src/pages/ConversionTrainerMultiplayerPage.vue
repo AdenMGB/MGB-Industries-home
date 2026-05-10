@@ -17,6 +17,7 @@ import { useAuth } from '@/composables/useAuth'
 import { api } from '@/api/client'
 import { createMultiplayerWebSocket } from '@/composables/useMultiplayerWebSocket'
 import ConversionBoxInput from '@/components/ConversionBoxInput.vue'
+import type { ConversionType, GameMode } from '@/components/ConversionBoxInput.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,8 +71,8 @@ const chatMessagesRef = ref<HTMLElement | null>(null)
 
 const mp = createMultiplayerWebSocket()
 
-const conv = computed(() => roomConfig.value?.conv ?? 'binary-standalone')
-const mode = computed(() => roomConfig.value?.mode ?? 'classic')
+const conv = computed(() => (roomConfig.value?.conv ?? 'binary-standalone') as ConversionType)
+const mode = computed(() => (roomConfig.value?.mode ?? 'classic') as GameMode)
 const showPowerTable = computed(() => (roomConfig.value?.goalValue as Record<string, unknown> | undefined)?.showPowerTable !== false)
 
 const conversionTypes = [

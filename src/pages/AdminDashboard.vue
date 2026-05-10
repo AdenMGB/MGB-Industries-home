@@ -22,7 +22,7 @@ import {
   TrophyIcon,
   PlusIcon,
 } from '@heroicons/vue/24/outline'
-import type { UserWithoutPassword } from '../../server/types/index.js'
+import type { UserWithoutPassword } from '../../server/types/user.js'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)

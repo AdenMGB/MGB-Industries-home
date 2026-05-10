@@ -8,6 +8,7 @@ import GitRepoInput from '@/components/GitRepoInput.vue'
 import GitEmbedSection from '@/components/GitEmbedSection.vue'
 import { gitApi } from '@/api/git'
 import { parseGitUrl } from '@/utils/git-url'
+import { queryFirstString } from '@/utils/route-query'
 
 const premiumEase = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const router = useRouter()
@@ -30,9 +31,18 @@ watch(repoUrl, () => {
   error.value = ''
 })
 
-watch(() => route.query.url, (url) => { if (url) repoUrl.value = url })
-watch(() => route.query.base, (b) => { if (b) baseBranch.value = b })
-watch(() => route.query.head, (h) => { if (h) headBranch.value = h })
+watch(() => route.query.url, (url) => {
+  const s = queryFirstString(url)
+  if (s) repoUrl.value = s
+})
+watch(() => route.query.base, (b) => {
+  const s = queryFirstString(b)
+  if (s) baseBranch.value = s
+})
+watch(() => route.query.head, (h) => {
+  const s = queryFirstString(h)
+  if (s) headBranch.value = s
+})
 
 function syncUrl() {
   const u = repoUrl.value.trim().replace(/^https?:\/\//, '').replace(/\.git$/, '').replace(/\/$/, '')

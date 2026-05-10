@@ -15,6 +15,7 @@ import { api } from '@/api/client'
 import { createTournamentWebSocket } from '@/composables/useTournamentWebSocket'
 import { createTournamentControlWebSocket } from '@/composables/useTournamentControlWebSocket'
 import ConversionBoxInput from '@/components/ConversionBoxInput.vue'
+import type { ConversionType, GameMode } from '@/components/ConversionBoxInput.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -58,8 +59,8 @@ const conversionBoxRef = ref<InstanceType<typeof ConversionBoxInput> | null>(nul
 const tws = createTournamentWebSocket()
 const controlWs = createTournamentControlWebSocket()
 
-const conv = computed(() => (roomConfig.value?.conv as string) ?? 'binary-standalone')
-const mode = computed(() => (roomConfig.value?.mode as string) ?? 'classic')
+const conv = computed(() => ((roomConfig.value?.conv as string | undefined) ?? 'binary-standalone') as ConversionType)
+const mode = computed(() => ((roomConfig.value?.mode as string | undefined) ?? 'classic') as GameMode)
 const showPowerTable = computed(() => (roomConfig.value?.goalValue as Record<string, unknown> | undefined)?.showPowerTable !== false)
 
 function copyJoinLink() {

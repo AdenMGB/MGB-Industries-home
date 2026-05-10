@@ -1,4 +1,4 @@
-import type { UserWithoutPassword } from '../../server/types/index.js'
+import type { UserWithoutPassword } from '../../server/types/user.js'
 import { getCookie, removeCookie } from '@/utils/cookies'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
@@ -120,62 +120,6 @@ export const api = {
   async deleteUser(id: string) {
     return request<{ message: string }>(`/users/${id}`, {
       method: 'DELETE',
-    })
-  },
-
-  async getGameSaves() {
-    return request<{ saves: Record<string, any> }>('/game-saves')
-  },
-
-  async getGameSave(gameId: string) {
-    return request<{ saveData: any }>(`/game-saves/${gameId}`)
-  },
-
-  async saveGame(gameId: string, saveData: Record<string, any>) {
-    return request<{ message: string }>('/game-saves', {
-      method: 'POST',
-      body: JSON.stringify({ gameId, saveData }),
-    })
-  },
-
-  async deleteGameSave(gameId: string) {
-    return request<{ message: string }>(`/game-saves/${gameId}`, {
-      method: 'DELETE',
-    })
-  },
-
-  async recordGameVisit(gameId: string, gameName: string, gameHref: string) {
-    return request<{ message: string }>('/game-history/visit', {
-      method: 'POST',
-      body: JSON.stringify({ gameId, gameName, gameHref }),
-    })
-  },
-
-  async getGameHistory() {
-    return request<{ history: Array<{ game_id: string; game_name: string; game_href: string; visited_at: string }> }>('/game-history')
-  },
-
-  async getGameFavorites() {
-    return request<{ favorites: Array<{ game_id: string; game_name: string; game_href: string; created_at: string }> }>('/game-favorites')
-  },
-
-  async addGameFavorite(gameId: string, gameName: string, gameHref: string) {
-    return request<{ message: string }>('/game-favorites', {
-      method: 'POST',
-      body: JSON.stringify({ gameId, gameName, gameHref }),
-    })
-  },
-
-  async removeGameFavorite(gameId: string) {
-    return request<{ message: string }>(`/game-favorites/${gameId}`, {
-      method: 'DELETE',
-    })
-  },
-
-  async sendContactMessage(data: { name: string; email: string; message: string }) {
-    return request<{ message: string }>('/contact', {
-      method: 'POST',
-      body: JSON.stringify(data),
     })
   },
 
